@@ -4,7 +4,9 @@
 #       schwarzweiss.py
 #       
 #       Copyright 2010 Horst JENS <horst.jens@spielend-programmieren.at>
-#       
+#
+#       needs Python 2.6 or better, pygame 1.9.1 or better
+       
 #       This program is free software; you can redistribute it and/or modify
 #       it under the terms of the GNU General Public License as published by
 #       the Free Software Foundation; either version 2 of the License, or
@@ -32,33 +34,131 @@ config =\
  'width': 800,
  'height': 600,
  'fps': 100,
- 'title': "SchwarzWeiss (press Esc to exit)",
- '-----------------------':0,
- 'dt': 0.01,
- 'friction': 0.987,
- 'player_sizefac': 1.2,
- 'player_color': (0, 0, 255),
- 'player_accel': 400,
- 'width_sensors': 8,
- 'height_sensors': 8,
- 
- 'waiting_text': "quit=Esc, again=Other Key"}
+ 'title': "Esc: quit, left player: WASD, LCtrl, right player: Cursor, Enter"
+ }
     
 
-        
+class Spark(pygame.sprite.Sprite):
+    side = 4
+    friction = .9
+    def __init__(self, pos, value):
+        pygame.sprite.Sprite.__init__(self, self.groups)
+        self.pos = [0.0,0.0]
+        self.pos[0] = pos[0]
+        self.pos[1] = pos[1]
+        self.value = value
+        self.heading = random.random() * 360.0
+        self.lifetime = 0.1 + random.random() * 0.5
+        if self.value > 128:
+            self.color = (random.randint(0,self.value), 
+                          random.randint(0,self.value),
+                          random.randint(0,self.value))
+        else:
+            self.color = (random.randint(self.value, 255),
+                          random.randint(self.value, 255),
+                          random.randint(self.value, 255))
+        self.vec = 150 + random.random() * 50
+        self.image = pygame.Surface((Spark.side, Spark.side))
+        self.image.fill(self.color)
+        self.rect = self.image.get_rect()
+        self.dy = math.sin(self.heading)
+        self.dx = math.cos(self.heading)
         
     
+    def update(self, seconds):
+        
+        self.lifetime -= seconds
+        if self.lifetime < 0:
+            self.kill()
+        #print "ich sparke"
+        self.dx *= Spark.friction
+        self.dy *= Spark.friction
+        self.pos[0] += self.vec * self.dx * seconds
+        self.pos[1] += self.vec * self.dy * seconds
+        self.rect.centerx = round(self.pos[0],0)
+        self.rect.centery = round(self.pos[1],0)
+        
+        
+        
+class Ball(pygame.sprite.Sprite):
+    """ a big ball, let bulltes bounce and floats around the playfield"""
+    number = 0
+    side = 100
+    friction = 0.995
+    def __init__(self,x,y,area, side=100, static = False, value= 128, mass=500):
+        pygame.sprite.Sprite.__init__(self, self.groups)
+        self.number = Ball.number
+        Ball.number += 1
+        #self.static = static
+        
+        
+        #self.x = x
+        #self.y = y
+        self.side = side
+        self.radius = side / 2
+        self.value = value
+        self.image = pygame.Surface((self.side, self.side))
+        self.image.fill((0,255,0)) # fill green
+        self.image.set_colorkey((0,255,0)) # green transparent
+        pygame.draw.circle(self.image, (self.value,self.value,self.value), (self.side/2, self.side/2), self.side/2) # colorful ring
+        pygame.draw.circle(self.image, (0,0,255), (self.side/2, self.side/2), self.side/2,1) # blue outer ring
+        self.value = 128
+        self.rect = self.image.get_rect()
+        self.pos = [0,0]
+        self.area = area # rect where i am allowed to be
+        self.pos[0] = x
+        self.pos[1] = y
+        self.rect.centerx = round(self.pos[0],0)
+        self.rect.centery = round(self.pos[1],0)
+        self.mass = mass
+        if static:
+            self.mass = 10000
+        self.dx = 0
+        self.dy = 0
+        
+    def update(self, seconds):
+
+        if self.dx != 0 or self.dy != 0:
+            #friction
+            self.dx *= Ball.friction
+            self.dy *= Ball.friction
+        # ----------- move -----------
+        self.pos[0] += self.dx * seconds
+        self.pos[1] += self.dy * seconds
+        # -------- areacheck ------------
+        if self.pos[0] < self.area.left:
+            self.pos[0] = self.area.left
+            self.dx = 0
+        elif self.pos[0] > self.area.right:
+            self.pos[0] = self.area.right
+            self.dx = 0
+        if self.pos[1] < self.area.top:
+            self.pos[1] = self.area.top
+            self.dy = 0
+        elif self.pos[1] > self.area.bottom:
+            self.pos[1] = self.area.bottom
+            self.dy = 0
+        # ---------- move sprite -------
+        self.rect.centerx = round(self.pos[0],0)
+        self.rect.centery = round(self.pos[1],0)
         
 
 class Bullet(pygame.sprite.Sprite):
     side = 10
     vec = 180 # velocity
+    mass = 50
+    maxlifetime = 10.0 # seconds
+    #dxmin = 0.2 #minimal dx speed or Bullet will be killed
     def __init__(self, boss):
         pygame.sprite.Sprite.__init__(self, self.groups) # THE most important line !
         self.boss = boss
+        self.mass = Bullet.mass
         self.vec = Bullet.vec
-        self.radius = Bullet.side # for collision detection
+        self.radius = Bullet.side / 2 # for collision detection
         self.color = self.boss.color
+        self.book = {}
+        self.lifetime = 0.0
+        self.bouncebook = {}
         image = pygame.Surface((Bullet.side, Bullet.side))
         image.fill((128,128,128)) # fill grey
         pygame.draw.circle(image, self.color, (self.side/2,self.side/2), self.side/2) #  circle
@@ -70,8 +170,8 @@ class Bullet(pygame.sprite.Sprite):
             self.dy = math.sin(degrees_to_radians(-self.boss.angle)) * self.vec
             self.dx = math.cos(degrees_to_radians(self.boss.angle)) * self.vec
         elif self.boss.border == "right":
-            self.dy = -math.sin(degrees_to_radians(-self.boss.angle)) * self.vec
-            self.dx = -math.cos(degrees_to_radians(self.boss.angle)) * self.vec
+            self.dy = math.sin(degrees_to_radians(-self.boss.angle)) * self.vec
+            self.dx = math.cos(degrees_to_radians(self.boss.angle)) * self.vec
         self.value = 255
         #    self.dx = -99
         self.dy += self.boss.dy # add boss movement
@@ -84,6 +184,13 @@ class Bullet(pygame.sprite.Sprite):
     def update(self, seconds=0.0):
         if self.value <= 0:
             self.kill()
+        #if self.vec < 1:
+        #    self.kill()
+        self.lifetime += seconds
+        if self.lifetime > Bullet.maxlifetime:
+            self.kill()
+        #if -Bullet.dxmin < self.dx < Bullet.dxmin:
+        #    self.kill() # too few dx speed
         self.pos[0] += self.dx * seconds
         self.pos[1] += self.dy * seconds
         # ----- kill if out of screen
@@ -111,6 +218,7 @@ class Tank(pygame.sprite.Sprite):
     recoiltime = 0.25 # how many seconds  the cannon is busy after firing one time
     turnspeed = 25
     movespeed = 25
+    maxrotate = 60
     def __init__(self, border="left"):
         """left... white, right...black"""
         pygame.sprite.Sprite.__init__(self, self.groups) # THE most important line !
@@ -126,6 +234,7 @@ class Tank(pygame.sprite.Sprite):
             self.dy *= -1
             self.pos[0] = self.side/2
             self.angle = 0
+            self.normal = 0
             self.firekey = pygame.K_LCTRL
             self.leftkey = pygame.K_a
             self.rightkey = pygame.K_d
@@ -136,6 +245,7 @@ class Tank(pygame.sprite.Sprite):
             self.pos[0] = config["width"] - self.side/2
             self.dy = 25
             self.angle = 180
+            self.normal = 180
             self.firekey = pygame.K_RETURN
             self.leftkey = pygame.K_LEFT
             self.rightkey = pygame.K_RIGHT
@@ -213,12 +323,20 @@ class Tank(pygame.sprite.Sprite):
         self.rect.centery = round(self.pos[1], 0) #y
         # -------- turret autorotate ----------
         self.angle += self.turndirection * self.turnspeed * seconds # time-based turning
-        if self.angle > 90:
+        #if self.border == "left":   # normal position 0 Grad
+        if self.angle > self.normal + Tank.maxrotate:
             #self.turndirection *= -1
-            self.angle = 90
-        elif self.angle < -90:
+            self.angle = self.normal + Tank.maxrotate
+        elif self.angle < self.normal - Tank.maxrotate:
             #self.turndirection *= -1
-            self.angle = -90
+            self.angle = self.normal - Tank.maxrotate
+        #elif self.border == "right":  # normal posiotion 180 Grad
+        #    if self.angle > 270:
+        #        #self.turndirection *= -1
+        #        self.angle = 270
+        #    elif self.angle < 90:
+        #        #self.turndirection *= -1
+        #        self.angle = 90
         # --------------- fire? -----------
         if self.firestatus ==0:
             if pressedkeys[self.firekey]:
@@ -278,7 +396,7 @@ class Turret(pygame.sprite.Sprite):
          pygame.draw.rect(image, (0,255,0), (self.side/2-20 - offset,self.side/2 - 5, self.side/2+15 - offset,10)) # green cannon
          pygame.draw.rect(image, (255,0,0), (self.side/2-20 - offset,self.side/2 - 5, self.side/2+15 - offset,10),1) # red rect 
          image.set_colorkey((128,128,128))
-         image = pygame.transform.rotate(image,self.boss.angle)
+         #image = pygame.transform.rotate(image,self.boss.angle)
          #if self.boss.border == "right":
          #  return pygame.transform.flip(image, True, False) # x flip
          #else:
@@ -290,29 +408,55 @@ class Field(pygame.sprite.Sprite):
     cornerx = 0
     cornery = 0
     book = {}
+    whitesum = 0
+    blacksum = 0
+    fields = 0
+    number = 0
     def __init__(self, posx, posy, value = 128):
         self.posy = posy
         self.posx = posx
+        self.number = Field.number
+        Field.number += 1
         self.value = value
-        self.color = (value,value,value)
+        self.oldvalue = value
+        #self.color = (value,value,value)
         pygame.sprite.Sprite.__init__(self, self.groups) #THE most important line !
         self.image = pygame.Surface((Field.sidex, Field.sidey))
-        self.image.fill((self.color))
+        self.image.fill((value,value,value))
         pygame.draw.rect(self.image,  (128,128,255), (0,0,Field.sidex, Field.sidey),1) # grid-rect around field
         self.rect = self.image.get_rect()
-        #self.pos = [-100,-100]
-        #self.dx = 0
-        #self.dy = 0
-        self.oldcolor = self.color[:]
+        
         self.rect.centerx = Field.cornerx + Field.sidex / 2 + self.posx * Field.sidex
         self.rect.centery = Field.cornery + Field.sidey / 2 + self.posy * Field.sidey
+        self.black = False
+        self.white = False
     
     def update(self, seconds):
-        if self.color != self.oldcolor:
-            self.image.fill((self.color))
-            pygame.draw.rect(self.image,  (128,128,255), (0,0,Field.sidex, Field.sidey),1)
-        self.oldcolor = self.color[:]
+        if self.value != self.oldvalue:
+            self.image.fill((self.value, self.value, self.value))
+            #print "changing  field" , str(self.number)
+            pygame.draw.rect(self.image,  (128,128,255), (0,0,Field.sidex, Field.sidey),1) # grid-rect around field
+            if self.white:
+                pygame.draw.line(self.image, (0,0,0), (0,0),(Field.sidex, Field.sidey),2)
+                pygame.draw.line(self.image, (0,0,0), (0,Field.sidey), (Field.sidex,0),2)
+            elif self.black:
+                pygame.draw.line(self.image, (255,255,255), (0,0),(Field.sidex, Field.sidey),2)
+                pygame.draw.line(self.image, (255,255,255), (0,Field.sidey), (Field.sidex,0),2)
+        self.oldvalue = self.value
         #print "ich werde geupdated"
+    def changevalue(self,amount=0):
+        if self.value > 0 and self.value < 255:
+            self.value += amount
+            self.value = min(255, self.value) # 0-255 only
+            self.value = max(0,self.value)    # 0-255 only
+            Spark(self.rect.center, self.value)
+            if self.value == 0:
+                self.black = True
+                Field.blacksum += 1
+            elif self.value == 255:
+                self.white = True
+                Field.whitesum += 1
+        
     
 #------------ defs ------------------
 def radians_to_degrees(radians):
@@ -379,15 +523,29 @@ def elastic_collision(sprite1, sprite2):
         
 
 def main():
+    print "======== SchwarzWeiss ==============="
+    print ""
+    print "2010 by HorstJENS@gmail.com, GPL license"
+    print ""
+    print "instructions:"
+    print ""
+    print "left (white) player: w,a,s,d, left CTRL"
+    print "right (black) player: Curosr, ETNER"
+    print "try to paint the fields with your color by shooting them"
+    print "bullets bounce off the big balls"
+    print "a controlled field is marked with an X and can no longer be painted"
+    print "you win if you control more than 50% of the fields"
+    antwort = raw_input("press ENTER to start")
     """versuche die Kasterln in Deine Farbe zu färben"""
     pygame.init()
     screen=pygame.display.set_mode((config["width"],config["height"])) 
     screenrect = screen.get_rect()
     background = pygame.Surface((screen.get_size()))
     backgroundrect = background.get_rect()
-    #background.fill((128,128,128)) # fill grey
-    pygame.draw.rect(background, (128,128,255), (0,0,Tank.side, config["height"])) # strip for left tank
-    pygame.draw.rect(background, (128,128,255), (config["width"]-Tank.side,0,Tank.side, config["height"])) # strip for right tank
+    playrect = pygame.Rect(Tank.side, 0, config["width"] - 2 * Tank.side, config["height"])
+    #background.fill((128,128,128)) # fill grey light blue:(128,128,255) 
+    pygame.draw.rect(background, (255,255,255), (0,0,Tank.side, config["height"])) # strip for left tank
+    pygame.draw.rect(background, (0,0,0), (config["width"]-Tank.side,0,Tank.side, config["height"])) # strip for right tank
     background = background.convert()
     #background0 = background.copy()
 
@@ -403,26 +561,52 @@ def main():
     bulletgroup = pygame.sprite.Group()
     allgroup = pygame.sprite.LayeredUpdates()
     fieldgroup = pygame.sprite.Group()
+    ballgroup = pygame.sprite.Group() # obstacles
     
     Tank._layer = 4
     Bullet._layer = 3
     Turret._layer = 6
     Field._layer = 2
+    Ball._layer = 3
+    Spark._layer = 2
     
  
     #assign default groups to each sprite class
     Tank.groups = tankgroup, allgroup
     Field.groups = allgroup, fieldgroup
     Turret.groups = allgroup
+    Spark.groups = allgroup
     Bullet.groups = bulletgroup, allgroup
+    Ball.groups = ballgroup, allgroup
     
     player1 = Tank("left")#
     player2 = Tank("right")
     
+    
+    # corner reflector balls
+    Ball(0,0,screenrect, 200, True, 255) # left upper corner static big ball
+    Ball(0,config["height"],screenrect, 200, True,255) # left lower corner static big ball
+    Ball(config["width"],0,screenrect, 200, True,0) # richt upper corner static big ball
+    Ball(config["width"],config["height"],screenrect, 200, True,0) # richt lower corner static big ball
+    # obstacle balls in playfield
+    #Ball(config["width"] / 2-Ball.side/2, config["height"]/2-Ball.side/2,screenrect )# obstacle in middle of field
+    #Ball(config["width"] / 5 * 2-Ball.side/2, config["height"]/3,screenrect )  # up left
+    #Ball(config["width"] / 5 * 3-Ball.side/2, Ball.side/2, screenrect ) # up middle
+    #Ball(config["width"] / 5 * 4-Ball.side/2, config["height"]/3,screenrect ) # up right
+    #Ball(config["width"] / 5 * 2-Ball.side/2, config["height"]/3*2,screenrect )  # low left
+    #Ball(config["width"] / 5 * 3-Ball.side/2, Ball.side/2*2, screenrect ) # low middle
+    #Ball(config["width"] / 5 * 4-Ball.side/2, config["height"]/3*2,screenrect ) # low right
+    ballsy = config["height"] / Ball.side
+    for y in range(2,ballsy):
+        Ball(config["width"]/2, y*Ball.side - Ball.side/2, playrect)
+    
+    
+    
+    
     #---------- fill grid with Field sprites ------------
     # 20 x 15
-    lenx = 20
-    leny = 15
+    lenx = 30
+    leny = 20
     # how much space x in playfield ?
     lengthx = config["width"] - 2* Tank.side
     lengthy = config["height"]
@@ -430,7 +614,7 @@ def main():
     Field.sidey = lengthy / leny
     Field.cornerx = Tank.side
     Field.cornery = 0
-    
+    Field.fields = lenx * leny # amount of fields !!!!
     for y in range(leny):
        for x in range(lenx):
            Field(x,y,128)
@@ -449,22 +633,46 @@ def main():
                 if event.key == pygame.K_ESCAPE:
                     mainloop = False 
 
-        for ball in bulletgroup:       
-            crashgroup = pygame.sprite.spritecollide(ball, fieldgroup, False, pygame.sprite.collide_circle)      
+        
+        for bull in bulletgroup:  
+            crashgroup = pygame.sprite.spritecollide(bull, fieldgroup, False )      #pygame.sprite.collide_circle
             for crashfield in crashgroup:
-                if ball.boss.border == "left" and crashfield.value <255:
-                    crashfield.value += 1
-                    crashfield.color = (crashfield.value,crashfield.value,crashfield.value)
-                    ball.value -= 1
-                elif ball.boss.border == "right" and crashfield.value >0:
-                    crashfield.value -= 1
-                    crashfield.color = (crashfield.value,crashfield.value,crashfield.value)
-                    ball.value -= 1
+                if not bull.book.has_key(crashfield.number):
+                    if bull.boss.border == "left":
+                        crashfield.changevalue(4)
+                    elif bull.boss.border == "right":
+                        crashfield.changevalue(-4)
+                    bull.value -= 4
+                    bull.book[crashfield.number] = True
+                    #Spark(bull.pos, crashfield.value)
+                    
+        for big in ballgroup:
+            crashgroup = pygame.sprite.spritecollide(big, bulletgroup, False, pygame.sprite.collide_circle)       #pygame.sprite.collide_circle
+            for bouncebullet in crashgroup:
+                #if not bouncebullet.bouncebook.has_key(big.number):
+                elastic_collision(big, bouncebullet)
+                #bouncebullet.bouncebook[big.number] = True
+            crashgroup = pygame.sprite.spritecollide(big, ballgroup, False, pygame.sprite.collide_circle)
+            for bigcrash in crashgroup:
+                elastic_collision(big, bigcrash)
+                
+        
 
         
-        pygame.display.set_caption("FPS: %.2f >>> dx: %i dy %i %s" % (clock.get_fps(), player1.angle, player2.angle, config["title"]))
+        
+        pygame.display.set_caption("<<<: %i ?: %i >>>: %i -- %s FPS: %.2f " % ( Field.whitesum, 
+                                    Field.fields - (Field.whitesum + Field.blacksum), Field.blacksum, config["title"],clock.get_fps()))
+        # ------------ win ------- 
+        if Field.blacksum > Field.fields / 2:
+            print "========================= GAME OVER ===================================="
+            print "black side ist the winner"
+            mainloop = False
+        elif Field.whitesum > Field.fields / 2:
+            print "========================= GAME OVER ===================================="
+            print "white side is the winner"
+            mainloop = False
         #screen.blit(background, (0,0)) # delete all
-        allgroup.clear(screen, background)
+        allgroup.clear(screen, background) # funny effect if you outcomment this line
         allgroup.update(seconds)
         allgroup.draw(screen)
         pygame.display.flip() # flip the screen 30 times a second
