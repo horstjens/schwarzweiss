@@ -29,14 +29,17 @@ import math
 
 GRAD = math.pi / 180 # 2 * pi / 360   # math module needs Radiant instead of Grad
 
-config =\
-{'fullscreen': False,
- 'width': 1024,
- 'height': 600,
- 'fps': 100,
- 'title': "Esc: quit, left player: WASD, right player: Cursor"
- }
-    
+class Config(object):
+    """the Config class is used to store some global game parameters"""
+    fullscreen = False
+    width = 1024 # pixel
+    height = 600 # picel
+    fps = 100  # max. framerate in frames per second
+    xtiles = 16 # how many fields horizontal
+    ytiles = 10 # how many fields vertical
+    title = "Esc: quit, left player: WASD, right player: Cursor"
+    balls = 2 # number of reflecting balls
+
 
 class Spark(pygame.sprite.Sprite):
     side = 4
@@ -86,54 +89,66 @@ class Ball(pygame.sprite.Sprite):
     side = 100
     friction = 1.0
     minspeed = 0.5
-    def __init__(self,x,y,area, dy ,side=100, static = False, value= 128, mass=500, wanderball = False):
+    mass = 500
+    def __init__(self,x,y,area, dy ):
         pygame.sprite.Sprite.__init__(self, self.groups)
         self.number = Ball.number
         Ball.number += 1
         self.dy = dy
-        #self.static = static
-        self.wanderball = wanderball
-        #self.upward = 1
-        #self.x = x
-        #self.y = y
-        self.side = side
-        self.static = static
-        self.radius = side / 2
-        self.value = value
+        self.static = True
+        self.side = Ball.side
+        self.radius = self.side / 2
+        self.red = 128  # ----- colors ----
+        self.green = 128
+        self.blue = 128
+        self.dr = random.randint(1,15) * random.choice((-1,1)) 
+        self.dg = random.randint(5,15) * random.choice((-1,1))
+        self.db = random.randint(5,15) * random.choice((-1,1))
         self.image = pygame.Surface((self.side, self.side))
         self.image.fill((0,255,0)) # fill green
         self.image.set_colorkey((0,255,0)) # green transparent
-        pygame.draw.circle(self.image, (self.value,self.value,self.value), (self.side/2, self.side/2), self.side/2) # colorful ring
-        pygame.draw.circle(self.image, (0,0,255), (self.side/2, self.side/2), self.side/2,1) # blue outer ring
-        self.value = 128
+        self.paint() # fill circles with color
         self.rect = self.image.get_rect()
+        
         self.pos = [0,0]
         self.area = area # rect where i am allowed to be
         self.pos[0] = x
         self.pos[1] = y
         self.rect.centerx = round(self.pos[0],0)
         self.rect.centery = round(self.pos[1],0)
-        self.mass = mass
-        if static:
-            self.mass = 10000
+        self.mass = Ball.mass
         self.dx = 0
-        #self.dy = 0
-        if self.wanderball:
-            self.dy = random.choice((-50,50))
-        #print "Bottom:" , self.area.bottom
+
+    def paint(self):
+        #--- colorcycle ----
+        self.red += self.dr
+        self.green += self.dg
+        self.blue += self.db
+        if self.red > 255:
+            self.red = 255
+            self.dr *= -1
+        elif self.red < 0:
+            self.red = 0
+            self.dr *= -1
+        if self.green > 255:
+            self.green = 255
+            self.dg *= -1
+        elif self.green < 0:
+            self.green = 0
+            self.dg *= -1
+        if self.blue > 255:
+            self.blue = 255
+            self.db *= -1
+        elif self.blue < 0:
+            self.blue = 0
+            self.db *= -1    
+        pygame.draw.circle(self.image, (self.red,self.green,self.blue), (self.side/2, self.side/2), self.side/2) # colorful ring
+        pygame.draw.circle(self.image, (0,0,255), (self.side/2, self.side/2), self.side/2,1) # blue outer ring
+        #self.image.convert_alpha()
+        
         
     def update(self, seconds):
-
-        #if self.dx != 0 or self.dy != 0:
-        #    #friction
-        #    self.dx *= Ball.friction
-        #    self.dy *= Ball.friction
-        #if not self.static:
-        #    if self.dx < Ball.minspeed and self.dy < Ball.minspeed:
-               # give random Impuls
-               # self.dx = random.randint(30,90) * random.choice((-1,1))
-        #      self.dy = random.randint(30,90) * random.choice((-1,1))
-            
+        self.paint() # cycle colors
         # ----------- move -----------
         self.pos[0] += self.dx * seconds
         self.pos[1] += self.dy * seconds
@@ -190,6 +205,7 @@ class Bullet(pygame.sprite.Sprite):
     def __init__(self, boss):
         pygame.sprite.Sprite.__init__(self, self.groups) # THE most important line !
         self.boss = boss
+        self.static = False
         self.mass = Bullet.mass
         self.vec = Bullet.vec
         self.radius = Bullet.side / 2 # for collision detection
@@ -234,14 +250,14 @@ class Bullet(pygame.sprite.Sprite):
         # ----- kill if out of screen
         if self.pos[0] < 0:
             self.kill()
-        elif self.pos[0] > config["width"]:
+        elif self.pos[0] > Config.width:
             self.kill()
         # ----- bounce from upper or lower border
         if self.pos[1] < 0:
             self.pos[1] = 0
             self.dy *= -1
-        elif self.pos[1] > config["height"]:
-            self.pos[1] = config["height"]
+        elif self.pos[1] > Config.height:
+            self.pos[1] = Config.height
             self.dy *= -1
         #------- move -------
         self.rect.centerx = round(self.pos[0],0)
@@ -264,7 +280,7 @@ class Tank(pygame.sprite.Sprite):
         self.border = border
         self.side = Tank.side
         self.pos[0] = 0.0
-        self.pos[1] = config["height"] / 2 # <
+        self.pos[1] = Config.height / 2 # <
         self.dx = 0
         self.dy = 0
         if self.border == "left":
@@ -280,7 +296,7 @@ class Tank(pygame.sprite.Sprite):
             self.downkey = pygame.K_s
         elif self.border == "right":
             self.color = (0,0,0)
-            self.pos[0] = config["width"] - self.side/2
+            self.pos[0] = Config.width - self.side/2
             self.dy = 25
             self.angle = 180
             self.normal = 180
@@ -341,8 +357,8 @@ class Tank(pygame.sprite.Sprite):
         self.dy = self.movespeed * self.updown
         # ------------- up/down movement ---------------------
         self.pos[1] += self.dy * seconds
-        if self.pos[1] + self.side/2 >= config["height"]:
-            self.pos[1] = config["height"] - self.side/2
+        if self.pos[1] + self.side/2 >= Config.height:
+            self.pos[1] = Config.height - self.side/2
             #self.dy *= -1
             #self.image = self.imageUp
             self.dy = 0 # crash into border
@@ -509,9 +525,21 @@ def degrees_to_radians(degrees):
 
 def elastic_collision(sprite1, sprite2):
     """elasitc collision between 2 sprites (calculated as disc's).
-       The function alters the dx and dy movement vectors of both sprites.
-       The sprites need the property .mass, .radius, .pos[0], .pos[1], .dx, dy
-       pos[0] is the x postion, pos[1] the y position"""
+       The function alters the dx and dy movement vectors of both sprites,
+       if both sprites have the flag .static set to False.
+       If one sprite has the flag .static set to True, this sprite's 
+       dx and dy vectors are not changed.
+       (If both sprites have the flag .static set to True, you don't need 
+        a elastic collision.)
+       The sprites need the propertys:
+             .mass 
+             .radius
+             .pos[0] # the x position
+             .pos[1] # the y position
+             .dx     # movement vector x
+             .dy     # movement vector y
+             .static # set to False (default)
+       """
     # here we do some physics: the elastic
     # collision
     # first we get the direction of the push.
@@ -557,10 +585,12 @@ def elastic_collision(sprite1, sprite2):
     # Only collide if the sprites are moving
     # towards each other: dp > 0
     if dp > 0:
-        sprite2.dx -= 2 * dirx * dp 
-        sprite2.dy -= 2 * diry * dp
-        sprite1.dx -= 2 * dirx * cdp 
-        sprite1.dy -= 2 * diry * cdp
+        if not sprite2.static:
+            sprite2.dx -= 2 * dirx * dp 
+            sprite2.dy -= 2 * diry * dp
+        if not sprite1.static:
+            sprite1.dx -= 2 * dirx * cdp 
+            sprite1.dy -= 2 * diry * cdp
 
 def write(msg="pygame is cool"):
     myfont = pygame.font.SysFont("None", 32)
@@ -584,16 +614,16 @@ def main():
     antwort = raw_input("press ENTER to start")
     """versuche die Kasterln in Deine Farbe zu färben"""
     pygame.init()
-    screen=pygame.display.set_mode((config["width"],config["height"])) 
+    screen=pygame.display.set_mode((Config.width,Config.height)) 
     screenrect = screen.get_rect()
     background = pygame.Surface((screen.get_size()))
     backgroundrect = background.get_rect()
-    playrect = pygame.Rect(Tank.side, Tank.side/2, config["width"] - 2 * Tank.side, config["height"]-Tank.side)
-    uprect = pygame.Rect(Tank.side, Tank.side/2, config["width"] - 2 * Tank.side, config["height"] / 2 - Tank.side)
+    playrect = pygame.Rect(Tank.side, Tank.side/2, Config.width - 2 * Tank.side, Config.height-Tank.side)
+    uprect = pygame.Rect(Tank.side, Tank.side/2, Config.width - 2 * Tank.side, Config.height / 2 - Tank.side)
     
     background.fill((128,128,255)) # fill grey light blue:(128,128,255) 
-    pygame.draw.rect(background, (255,255,255), (0,0,Tank.side, config["height"])) # strip for left tank
-    pygame.draw.rect(background, (0,0,0), (config["width"]-Tank.side,0,Tank.side, config["height"])) # strip for right tank
+    pygame.draw.rect(background, (255,255,255), (0,0,Tank.side, Config.height)) # strip for left tank
+    pygame.draw.rect(background, (0,0,0), (Config.width-Tank.side,0,Tank.side, Config.height)) # strip for right tank
     background = background.convert()
     #background0 = background.copy()
 
@@ -601,7 +631,7 @@ def main():
     screen.blit(background, (0,0)) # delete all
     clock = pygame.time.Clock() #create pygame clock object
     mainloop = True
-    FPS = config["fps"]         # desired max. framerate in frames per second. 
+    FPS = Config.fps         # desired max. framerate in frames per second. 
     playtime = 0
     
     
@@ -631,55 +661,42 @@ def main():
     player2 = Tank("right")
     
     
-    # corner reflector balls
-    ##Ball(0,0,screenrect, 200, True, 255) # left upper corner static big ball
-    ##Ball(0,config["height"],screenrect, 200, True,255) # left lower corner static big ball
-    ##Ball(config["width"],0,screenrect, 200, True,0) # richt upper corner static big ball
-    ##Ball(config["width"],config["height"],screenrect, 200, True,0) # richt lower corner static big ball
-    # obstacle balls in playfield
-    #Ball(config["width"] / 2-Ball.side/2, config["height"]/2-Ball.side/2,screenrect )# obstacle in middle of field
-    #Ball(config["width"] / 5 * 2-Ball.side/2, config["height"]/3,screenrect )  # up left
-    #Ball(config["width"] / 5 * 3-Ball.side/2, Ball.side/2, screenrect ) # up middle
-    #Ball(config["width"] / 5 * 4-Ball.side/2, config["height"]/3,screenrect ) # up right
-    #Ball(config["width"] / 5 * 2-Ball.side/2, config["height"]/3*2,screenrect )  # low left
-    #Ball(config["width"] / 5 * 3-Ball.side/2, Ball.side/2*2, screenrect ) # low middle
-    #Ball(config["width"] / 5 * 4-Ball.side/2, config["height"]/3*2,screenrect ) # low right
-    ballsy = config["height"] / Ball.side
-    #for y in range(2,ballsy,2):
-    Ball(config["width"]/4 *1 , 4*Ball.side -  Ball.side/2 , playrect, -100)
-    Ball(config["width"]/4 *1 , 4*Ball.side -  Ball.side/2 - Ball.side, playrect, 0)
-    #for y in range(2,ballsy,2):
-    Ball(config["width"]/4 *3 , 4*Ball.side - Ball.side/2, playrect, 0)
-    Ball(config["width"]/4 *3 , 4*Ball.side - Ball.side/2- Ball.side, playrect,0)
-    #print y
-    #------- Wanderballs ----------
-    #for y in range(2):
-    #Ball(config["width"]/2 , config["height"]/3, uprect, side=100, static = False, value= 128, mass=1000, wanderball = True)
+
     
     
     
     #---------- fill grid with Field sprites ------------
-    # 20 x 15
-    lenx = 15
-    leny = 10
+    
     # how much space x in playfield ?
-    lengthx = config["width"] - 2* Tank.side
-    lengthy = config["height"] - 1* Tank.side
-    Field.sidex = lengthx / lenx
-    Field.sidey = lengthy / leny
+    lengthx = Config.width - 2* Tank.side
+    lengthy = Config.height - 1* Tank.side
+    Field.sidex = lengthx / Config.xtiles
+    Field.sidey = lengthy / Config.ytiles
+    Ball.side = 2 * Field.sidex  # a Ball diameter is 2 times the length(x) of a field
     Field.cornerx = Tank.side
     Field.cornery = Tank.side/2
     # offset to center fields in x-axis of screen
-    Field.offsetx =  (lengthx - ( Field.sidex * lenx) ) / 2
-    Field.fields = lenx * leny # amount of fields !!!!
-    for y in range(leny):
-       for x in range(lenx):
+    Field.offsetx =  (lengthx - ( Field.sidex * Config.xtiles) ) / 2
+    Field.fields = Config.xtiles * Config.ytiles # amount of fields !!!!
+    for y in range(Config.ytiles):
+       for x in range(Config.xtiles):
            Field(x,y,128)
     # statusText
-    status1 = Text((config["width"]/2, Tank.side/4), "Schwarz versus Weiss")
+    status1 = Text((Config.width/2, 18), "White vs. Black")
+    score = Text((Config.width/2, 40)," %i vs. %i " % (0,0))
+
+    # ---------- create obstacle balls ------------
+    Config.balls = 5
+    ballsx = Config.balls * Ball.side
+    spaces = Config.balls + 1
+    spacex = (lengthx - ballsx) / spaces
+    for ballnumber in xrange(Config.balls):
+         Ball(Tank.side + (ballnumber+1) * spacex + (ballnumber+1) * Ball.side - Ball.side/2  ,
+              Config.height/2 , playrect, random.randint(20,50) * random.choice((-1,1)))
+
            
     while mainloop:
-        milliseconds = clock.tick(config["fps"])  # milliseconds passed since last frame
+        milliseconds = clock.tick(Config.fps)  # milliseconds passed since last frame
         seconds = milliseconds / 1000.0 # seconds passed since last frame (float)
         playtime += seconds
             
@@ -717,9 +734,9 @@ def main():
         
 
         
-        
+        score.changemsg("%i vs. %i" % (Field.whitesum , Field.blacksum))
         pygame.display.set_caption("<<<: %i ?: %i >>>: %i -- %s FPS: %.2f " % ( Field.whitesum, 
-                                    Field.fields - (Field.whitesum + Field.blacksum), Field.blacksum, config["title"],clock.get_fps()))
+                                    Field.fields - (Field.whitesum + Field.blacksum), Field.blacksum, Config.title,clock.get_fps()))
         # ------------ textdisplays ---------------
         
         # ------------ win ------- 
