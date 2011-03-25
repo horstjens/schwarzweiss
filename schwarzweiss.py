@@ -271,7 +271,7 @@ class Tank(pygame.sprite.Sprite):
     side = 100 # side of the quadratic tank sprite
     recoiltime = 0.25 # how many seconds  the cannon is busy after firing one time
     turnspeed = 25
-    movespeed = 25
+    movespeed = 88
     maxrotate = 60
     def __init__(self, border="left"):
         """left... white, right...black"""
@@ -732,9 +732,9 @@ def main():
                 elastic_collision(big, bigcrash)
                 
         
-
-        
-        score.changemsg("%i vs. %i" % (Field.whitesum , Field.blacksum))
+ 
+        #print Field.fields, Field.whitesum , float(Field.whitesum / Field.fields)
+        score.changemsg("%.1f%% vs. %.1f%%" % (Field.whitesum *1.0 / Field.fields * 100 , Field.blacksum *1.0 / Field.fields *100 ))
         pygame.display.set_caption("<<<: %i ?: %i >>>: %i -- %s FPS: %.2f " % ( Field.whitesum, 
                                     Field.fields - (Field.whitesum + Field.blacksum), Field.blacksum, Config.title,clock.get_fps()))
         # ------------ textdisplays ---------------
