@@ -200,7 +200,7 @@ class Bullet(pygame.sprite.Sprite):
     side = 10
     vec = 180 # velocity
     mass = 50
-    maxlifetime = 10.0 # seconds
+    maxlifetime = 6.0 # seconds
     #dxmin = 0.2 #minimal dx speed or Bullet will be killed
     def __init__(self, boss):
         pygame.sprite.Sprite.__init__(self, self.groups) # THE most important line !
@@ -210,16 +210,10 @@ class Bullet(pygame.sprite.Sprite):
         self.vec = Bullet.vec
         self.radius = Bullet.side / 2 # for collision detection
         self.color = self.boss.color
+        self.bordercolor = self.boss.bordercolor
         self.book = {}
         self.lifetime = 0.0
         self.bouncebook = {}
-        image = pygame.Surface((Bullet.side, Bullet.side))
-        image.fill((128,128,128)) # fill grey
-        pygame.draw.circle(image, self.color, (self.side/2,self.side/2), self.side/2) #  circle
-        pygame.draw.circle(image, (255,0,0), (self.side/2,self.side/2), self.side/2,1) #  circle
-        image.set_colorkey((128,128,128)) # grey transparent
-        self.image = image.convert_alpha()
-        self.rect = image.get_rect()
         if self.boss.border == "left":
             self.dy = math.sin(degrees_to_radians(-self.boss.angle)) * self.vec
             self.dx = math.cos(degrees_to_radians(self.boss.angle)) * self.vec
@@ -227,6 +221,14 @@ class Bullet(pygame.sprite.Sprite):
             self.dy = math.sin(degrees_to_radians(-self.boss.angle)) * self.vec
             self.dx = math.cos(degrees_to_radians(self.boss.angle)) * self.vec
         self.value = 255
+        image = pygame.Surface((Bullet.side, Bullet.side))
+        image.fill((128,128,128)) # fill grey
+        pygame.draw.circle(image, self.color, (self.side/2,self.side/2), self.side/2) #  circle
+        pygame.draw.circle(image, (self.bordercolor), (self.side/2,self.side/2), self.side/2,3) #  circle
+        image.set_colorkey((128,128,128)) # grey transparent
+        self.image = image.convert_alpha()
+        self.rect = image.get_rect()
+
         #    self.dx = -99
         self.dy += self.boss.dy # add boss movement
         self.pos = self.boss.pos[:] # copy (!!!) of boss position
@@ -249,7 +251,7 @@ class Bullet(pygame.sprite.Sprite):
         self.pos[1] += self.dy * seconds
         # ----- kill if out of screen
         if self.pos[0] < 0:
-            self.kill()
+            self.kill() # kill if leaving left border of playfield
         elif self.pos[0] > Config.width:
             self.kill()
         # ----- bounce from upper or lower border
@@ -269,7 +271,7 @@ class Tank(pygame.sprite.Sprite):
     # a tank moving up and down at on side of the screen
     # bouncing at upper or lower screen edge
     side = 100 # side of the quadratic tank sprite
-    recoiltime = 0.25 # how many seconds  the cannon is busy after firing one time
+    recoiltime = 0.75 # how many seconds  the cannon is busy after firing one time
     turnspeed = 25
     movespeed = 88
     maxrotate = 60
@@ -285,6 +287,7 @@ class Tank(pygame.sprite.Sprite):
         self.dy = 0
         if self.border == "left":
             self.color = (255,255,255)
+            self.bordercolor = (0,255,0)
             self.dy *= -1
             self.pos[0] = self.side/2
             self.angle = 0
@@ -296,6 +299,7 @@ class Tank(pygame.sprite.Sprite):
             self.downkey = pygame.K_s
         elif self.border == "right":
             self.color = (0,0,0)
+            self.bordercolor = (255,0,0)
             self.pos[0] = Config.width - self.side/2
             self.dy = 25
             self.angle = 180
@@ -310,9 +314,10 @@ class Tank(pygame.sprite.Sprite):
         
         image = pygame.Surface((self.side,self.side)) # created on the fly
         image.fill((128,128,128)) # fill grey
-        pygame.draw.circle(image, (255,0,0), (self.side/2,self.side/2), 50, 2) # red circle
-        pygame.draw.line(image, (255,0,0), (0,self.side), (self.side/2,0), 1) #red diagonal
-        pygame.draw.line(image, (255,0,0), (self.side/2,0), (self.side,self.side), 1) # red diagonal
+        pygame.draw.circle(image, (self.color), (self.side/2,self.side/2), 50) # white/black filled circle
+        pygame.draw.circle(image, (self.bordercolor), (self.side/2,self.side/2), 50, 4) # outer red border circle
+        pygame.draw.line(image, (self.bordercolor), (0,self.side), (self.side/2,0), 4) # diagonal
+        pygame.draw.line(image, (self.bordercolor), (self.side/2,0), (self.side,self.side), 4) #diagonal
         image.set_colorkey((128,128,128)) # grey transparent
         self.imageUp = image.convert_alpha()
         self.imageDown = pygame.transform.flip(self.imageUp, False, True) # y flip
@@ -622,8 +627,8 @@ def main():
     uprect = pygame.Rect(Tank.side, Tank.side/2, Config.width - 2 * Tank.side, Config.height / 2 - Tank.side)
     
     background.fill((128,128,255)) # fill grey light blue:(128,128,255) 
-    pygame.draw.rect(background, (255,255,255), (0,0,Tank.side, Config.height)) # strip for left tank
-    pygame.draw.rect(background, (0,0,0), (Config.width-Tank.side,0,Tank.side, Config.height)) # strip for right tank
+    #pygame.draw.rect(background, (255,255,255), (0,0,Tank.side, Config.height)) # strip for left tank
+    #pygame.draw.rect(background, (0,0,0), (Config.width-Tank.side,0,Tank.side, Config.height)) # strip for right tank
     background = background.convert()
     #background0 = background.copy()
 
