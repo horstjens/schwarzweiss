@@ -124,15 +124,30 @@ class Energybar(pygame.sprite.Sprite):
            self.pos = [0.0,0.0]
            self.pos[0] = pos[0]
            self.pos[1] = pos[1]
+           self.barnumber = barnumber
            self.image = pygame.Surface((Energybar.length,Energybar.height))
            self.image.set_colorkey((0,0,0))
-           pygame.draw.rect(self.image, (255,255,255),(0,0,Energybar.length, Energybar.height),1)
+           #pygame.draw.rect(self.image, (255,255,255),(0,0,Energybar.length, Energybar.height),1) # border
            self.rect = self.image.get_rect()
            self.rect.centerx = round(self.pos[0],0)
            self.rect.centery = round(self.pos[1],0)
+           if self.barnumber == 1: # energy reserve:
+               self.red = 255
+               self.green = 255
+               self.blue = 0
+               self.image.fill((self.red, self.green, self.blue))
+               pygame.draw.rect(self.image, (255,255,255),(0,0,Energybar.length, Energybar.height),1) # border
+               
+       
        
        def update(self, seconds):
-           pass     
+           if self.barnumber == 1: # energy reserve
+               self.image.fill((self.red, self.green, self.blue))
+               self.percent = self.boss.energy * 1.0 / Tank.emax
+               blackholex = (1 - self.percent) * Energybar.length
+               pygame.draw.rect(self.image, (0,0,0), (Energybar.length - blackholex, 0, blackholex, Energybar.height))
+               pygame.draw.rect(self.image, (255,255,255),(0,0,Energybar.length, Energybar.height),1) # border
+               pygame.draw.line(self.image, (255,255,255),(Energybar.length/2,0),(Energybar.length/2,Energybar.height),1)
            
 
 class Text(pygame.sprite.Sprite):
@@ -339,10 +354,13 @@ class Tank(pygame.sprite.Sprite):
     egridconvert = 50
     emoveloss = 9
     erotateloss = 12
-    ebulletloss = 40
-    etracerloss = 15
+    ebulletloss = 250
+    etracerloss = 4
     ehitloss = 2
     eturrethitloss = 50
+    emax = 1000
+    ebulletmin = 500
+    etracermin = 50
     
           
     def __init__(self, startpos = (150,150), turretangle=0, tankangle=90):
@@ -359,7 +377,10 @@ class Tank(pygame.sprite.Sprite):
         self.radius = self.side / 3 # for collision detection
         #self.ammo = 30 # main gun
         self.mgammo = 500 # machinge gun
-        self.energy = 100
+        self.energy = 550 # a bit more than 50%
+        self.eplus = 0
+        self.eminus = 0
+        self.netto = 0
         
         self.turretAngle = turretangle #turret facing
         self.tankAngle = tankangle # tank facing
@@ -395,7 +416,7 @@ class Tank(pygame.sprite.Sprite):
         #---------- turret ------------------
         self.firestatus = 0.0 # time left until cannon can fire again
         #self.mgfirestatus = 0.0 # time until mg can fire again
-        #self.mg2firestatus = 0.0 # time until turret mg can fire again
+        self.mg2firestatus = 0.0 # time until turret mg can fire again
         self.turndirection = 0    # for turret
         self.tankturndirection = 0
         self.movespeed = Tank.movespeed
@@ -417,15 +438,18 @@ class Tank(pygame.sprite.Sprite):
         if self.number > 1: # neutral tanks
              self.aim_at_player(self.targetplayer)
         else: # player tanks
+            #--------- energy -----------
+            self.eplus += Tank.ebasegain * seconds
+            #self.energy += Tank.ebasegain * seconds
             #-------- reloading, firestatus----------
 
             #if self.mgfirestatus > 0:
             #    self.mgfirestatus -= seconds # bow mg will soon be ready again
             #    if self.mgfirestatus <0:
             #        self.mgfirestatus = 0 #avoid negative numbers
-            #if self.mg2firestatus > 0:
-            #    self.mg2firestatus -= seconds # turret mg will soon be ready again
-            #    if self.mg2firestatus <0:
+            if self.mg2firestatus > 0:
+                self.mg2firestatus -= seconds # turret mg will soon be ready again
+                self.mg2firestatus = max(0, self.mg2firestatus)
             #        self.mg2firestatus = 0 #avoid negative numbers
             
             # ------------ keyboard --------------
@@ -437,9 +461,10 @@ class Tank(pygame.sprite.Sprite):
             else:
                 if pressedkeys[self.turretLeftkey]:
                     self.turndirection += 1
+                    self.eminus += Tank.erotateloss * seconds
                 if pressedkeys[self.turretRightkey]:
                     self.turndirection -= 1
-               
+                    self.eminus += Tank.erotateloss * seconds
             #---------- tank rotation ---------
             self.tankturndirection = 0 # reset left/right rotation
             #if pressedkeys[self.tankLeftkey]:
@@ -452,8 +477,14 @@ class Tank(pygame.sprite.Sprite):
             #if (self.firestatus ==0) and (self.ammo > 0):
             if (self.firestatus ==0) :
                 if pressedkeys[self.firekey]:
-                    self.firestatus = Tank.recoiltime # seconds until tank can fire again
-                    Bullet(self)    
+                    if (self.energy > Tank.ebulletloss):
+                        self.firestatus = Tank.recoiltime # seconds until tank can fire again
+                        self.eminus += Tank.ebulletloss
+                        Bullet(self) 
+                    elif (self.energy > Tank.etracerloss) and self.mg2firestatus == 0:
+                        self.mg2firestatus = Tank.mgrecoiltime
+                        self.eminus += Tank.etracerloss
+                        Tracer(self, True)
                     #self.ammo -= 1
                     #self.msg =  "player%i: ammo: %i/%i keys: %s" % (self.number+1, self.ammo, self.mgammo, Tank.msg[self.number])
                     #Text.book[self.number].changemsg(self.msg)
@@ -483,11 +514,19 @@ class Tank(pygame.sprite.Sprite):
                 self.forward -= 1
             # if both are pressed togehter, self.forward becomes 0
             if self.forward == 1:
+                self.eminus += Tank.emoveloss * seconds
                 self.dx =  math.cos(degrees_to_radians(self.tankAngle)) * self.movespeed
                 self.dy =  -math.sin(degrees_to_radians(self.tankAngle)) * self.movespeed
             if self.forward == -1:
+                self.eminus += Tank.emoveloss * seconds
                 self.dx =  -math.cos(degrees_to_radians(self.tankAngle)) * self.movespeed
                 self.dy =  math.sin(degrees_to_radians(self.tankAngle)) * self.movespeed
+            # ----- energy sum ---
+            self.energy += self.eplus
+            self.energy -= self.eminus
+            self.eplus = 0
+            self.eminus = 0
+            self.enetto = 0
         # ------------- check border collision ---------------------
         self.pos[0] += self.dx * seconds
         self.pos[1] += self.dy * seconds
@@ -902,12 +941,13 @@ def main():
     # statusText
     status1 = Text((Config.width/2, 18), "SchwarzWeiss", 36 )
     score = Text((Config.width/2, 40),"%i (white player) vs. %i (black player) " % (0,0), 30)
-    lefttext = Text((Config.width/2,60),"white player: press w,a,s,d + LSHIFT", 24)
-    righttext = Text((Config.width/2,80),"black player: press cursor + RCTRL", 24)
-    el1 = Text((65,10),"energy reserve:",24)
-    ebl1 = Energybar((Config.width/4,10),player1,1)  # pos, boss, barnumber
-    el2 = Text((70,40),"energy loss/gain:",24)
-    el3 = Text((65,70),"energy change:",24)
+    lefttext = Text((Config.width/4,10),"press w,a,s,d + LSHIFT", 24)
+    righttext = Text((Config.width - 200,10),"press cursor + RCTRL", 24)
+    el0 = Text((45,10),"Energy",24)
+    el1 = Text((45,30),"reserve:",24)
+    ebl1 = Energybar((Config.width/4,30),player1,1)  # pos, boss, barnumber
+    el2 = Text((50,50),"+ / -:",24)
+    el3 = Text((45,70),"change:",24)
     er1 = Text((Config.width-155,35),"energy:",24)
     # ---- create neutral green tanks -----
     neutralx = Config.neutraltanks * Tank.side
@@ -953,6 +993,15 @@ def main():
                 if tank.number > 1: # neutral tank
                     if bouncebullet.boss.number < 2: # bullet come from player
                         tank.targetplayer = bouncebullet.boss.number
+                        bouncebullet.boss.eplus += Tank.eturrethitgain
+                elif tank.number == 1 and bouncebullet.boss.number == 0:
+                    player1.eplus += Tank.eturrethitgain
+                    player2.eminus += Tank.eturrethitloss
+                elif tank.number == 0 and bouncebullet.boss.number == 1:
+                    player2.eplus += Tank.eturrethitgain
+                    player1.eminus += Tank.eturrethitloss
+                elif tank.number < 2 and bouncebullet.boss.number > 1:
+                    tank.eminus += Tank.eturrethitloss
                 elastic_collision(bouncebullet, tank)
                 
                 
