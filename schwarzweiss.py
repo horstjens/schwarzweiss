@@ -38,8 +38,8 @@ class Config(object):
     width = 1024 # pixel
     height = 600 # picel
     fps = 100  # max. framerate in frames per second
-    xtiles = 16 # how many fields horizontal
-    ytiles = 10 # how many fields vertical
+    xtiles = 10 # how many fields horizontal
+    ytiles = 5 # how many fields vertical
     title = "Esc: quit, left player: WASD, right player: Cursor"
     neutraltanks = 2 # number of neutral tanks
     tankxpercent = 0.4 # left tank is allowed in the left 40 % of playfield
@@ -109,14 +109,40 @@ class Obstacle(pygame.sprite.Sprite):
             self.red = min(255, self.red)
         self.image.fill((self.red, self.green, self.blue))
         
-
+class Energybar(pygame.sprite.Sprite):
+       """a bar to indicate energy loss or gain
+          barnumber:
+          1 = energy reserve
+          2 = gain/loss
+          3 = change
+          """
+       length = Config.width / 4
+       height = 20
+       def __init__(self, pos, boss, barnumber):
+           pygame.sprite.Sprite.__init__(self, self.groups)
+           self.boss = boss
+           self.pos = [0.0,0.0]
+           self.pos[0] = pos[0]
+           self.pos[1] = pos[1]
+           self.image = pygame.Surface((Energybar.length,Energybar.height))
+           self.image.set_colorkey((0,0,0))
+           pygame.draw.rect(self.image, (255,255,255),(0,0,Energybar.length, Energybar.height),1)
+           self.rect = self.image.get_rect()
+           self.rect.centerx = round(self.pos[0],0)
+           self.rect.centery = round(self.pos[1],0)
+       
+       def update(self, seconds):
+           pass     
+           
 
 class Text(pygame.sprite.Sprite):
-    def __init__(self, pos, msg):
+    def __init__(self, pos, msg, fontsize=32, color=(0,0,0)):
         pygame.sprite.Sprite.__init__(self, self.groups)
         self.pos = [0.0,0.0]
         self.pos[0] = pos[0]
         self.pos[1] = pos[1]
+        self.fontsize = fontsize
+        self.color = color
         self.msg = msg
         self.changemsg(msg)
         
@@ -125,7 +151,7 @@ class Text(pygame.sprite.Sprite):
         
     def changemsg(self,msg):
         self.msg = msg
-        self.image = write(self.msg)
+        self.image = write(self.msg, self.fontsize, self.color)
         self.rect = self.image.get_rect()
         self.rect.centerx = self.pos[0]
         self.rect.centery = self.pos[1]
@@ -168,7 +194,10 @@ class Bullet(pygame.sprite.Sprite):
         image.fill((128,128,128)) # fill grey
         pygame.draw.rect(image, self.color, (0,0,Bullet.side * 1.5, Bullet.side)) # rectangle 1.5 length
         pygame.draw.circle(image, self.color, (self.side *1.5 ,self.side/2), self.side/2) #  circle
+        pygame.draw.rect(image, (255,0,0), (0,0,Bullet.side * 1.5, Bullet.side),1) # rectangle 1.5 length
         image.set_colorkey((128,128,128)) # grey transparent
+        
+        
         self.image0 = image.convert_alpha()
         #self.image = self.image0.copy()
         self.image = pygame.transform.rotate(self.image0, self.angle)
@@ -274,6 +303,7 @@ class Tracer(Bullet):
             self.pos[0] +=  math.cos(degrees_to_radians(30+self.boss.tankAngle)) * (Tank.side/2)
             self.pos[1] +=  math.sin(degrees_to_radians(-30-self.boss.tankAngle)) * (Tank.side/2)
 
+
             
 class Tank(pygame.sprite.Sprite):
     """ A Tank, controlled by the Player with Keyboard commands.
@@ -301,7 +331,19 @@ class Tank(pygame.sprite.Sprite):
     #tankRightkey = (pygame.K_d, pygame.K_KP6)
     color = ((255,255,255), (0,0,0))
     #msg = ["wasd LCTRL, ijkl", "Keypad: 4852, ENTER, cursor"]
-
+    # ----- energy gain and loss per second -----
+    ebasegain = 10 # energy gain per second
+    ehitgain = 1
+    eturrethitgain = 25
+    egridgain = 5
+    egridconvert = 50
+    emoveloss = 9
+    erotateloss = 12
+    ebulletloss = 40
+    etracerloss = 15
+    ehitloss = 2
+    eturrethitloss = 50
+    
           
     def __init__(self, startpos = (150,150), turretangle=0, tankangle=90):
         self.number = Tank.number # now i have a unique tank number
@@ -317,6 +359,7 @@ class Tank(pygame.sprite.Sprite):
         self.radius = self.side / 3 # for collision detection
         #self.ammo = 30 # main gun
         self.mgammo = 500 # machinge gun
+        self.energy = 100
         
         self.turretAngle = turretangle #turret facing
         self.tankAngle = tankangle # tank facing
@@ -340,8 +383,8 @@ class Tank(pygame.sprite.Sprite):
         image.fill((128,128,128)) # fill grey
         if self.side > 10:
              pygame.draw.rect(image, self.color, (5,5,self.side-10, self.side-10)) #tank body, margin 5
-             pygame.draw.rect(image, (90,90,90), (0,0,self.side/6, self.side)) # track left
-             pygame.draw.rect(image, (90,90,90), (self.side-self.side/6, 0, self.side,self.side)) # right track
+             pygame.draw.rect(image, (139,105,20), (0,0,self.side/6, self.side)) # brown track left
+             pygame.draw.rect(image, (139,105,20), (self.side-self.side/6, 0, self.side,self.side)) # brown right track
              pygame.draw.rect(image, (255,0,0), (self.side/6+5 , 10, 10, 5)) # red bow rect left
              #pygame.draw.rect(image, (255,0,0), (self.side/2 - 5, 10, 10, 5)) # red bow rect middle
         pygame.draw.circle(image, (255,0,0), (self.side/2,self.side/2), self.side/3 , 2) # red circle for turret
@@ -452,6 +495,9 @@ class Tank(pygame.sprite.Sprite):
         #print self.tankAngle
         # -------- south border ---------
         # messy code
+        if self.number > 1 and self.pos[1] > Config.height - Tank.side * 1.5:
+            self.pos[1] = Config.height - Tank.side *1.5
+            self.dy *= -1
         if self.pos[1] + self.side/2 >= Config.height:
             self.pos[1] = Config.height - self.side/2
             if self.number < 2:
@@ -772,27 +818,13 @@ def elastic_collision(sprite1, sprite2):
             sprite1.dy -= 2 * diry * cdp
             sprite1.rotate_toward_moving() # new heading
 
-def write(msg="pygame is cool"):
-    myfont = pygame.font.SysFont("None", 32)
-    mytext = myfont.render(msg, True, (0,0,0))
+def write(msg="pygame is cool", fontsize = 32, color=(0,0,0)):
+    myfont = pygame.font.SysFont("None", fontsize)
+    mytext = myfont.render(msg, True, color)
     mytext = mytext.convert_alpha()
     return mytext        
 
 def main():
-    print "======== SchwarzWeiss ==============="
-    print ""
-    print "2010 by HorstJENS@gmail.com, GPL license"
-    print ""
-    print "instructions:"
-    print ""
-    print "left (white) player: w,a,s,d, left CTRL"
-    print "right (black) player: Curosr, ETNER"
-    print "try to paint the fields with your color by shooting them"
-    print "bullets bounce off the big balls"
-    print "a controlled field is marked with an X and can no longer be painted"
-    print "you win if you control more than 50% of the fields"
-    antwort = raw_input("press ENTER to start")
-    """versuche die Kasterln in Deine Farbe zu färben"""
     pygame.init()
     screen=pygame.display.set_mode((Config.width,Config.height)) 
     screenrect = screen.get_rect()
@@ -821,13 +853,14 @@ def main():
     obstaclegroup = pygame.sprite.Group()
     allgroup = pygame.sprite.LayeredUpdates()
     
-    Tank._layer = 4
+    Tank._layer = 5
     Bullet._layer = 8
     Turret._layer = 6
     Field._layer = 2
     Obstacle._layer = 3
     Spark._layer = 2
-    Text._layer = 9
+    Text._layer = 4
+    Energybar._layer = 2
  
     #assign default groups to each sprite class
     Tank.groups = tankgroup, allgroup
@@ -837,6 +870,7 @@ def main():
     Bullet.groups = bulletgroup, allgroup
     Text.groups = allgroup
     Obstacle.groups = allgroup, obstaclegroup
+    Energybar.groups = allgroup
     
     # ---- create Tanks ------
     #         Tank(pos, turretAngle, tankAngle)
@@ -866,11 +900,15 @@ def main():
        for x in range(Config.xtiles):
            Field(x,y,128)
     # statusText
-    status1 = Text((Config.width/2, 18), "White vs. Black")
-    score = Text((Config.width/2, 40)," %i vs. %i " % (0,0))
-    Text((150,18),"press w,a,s,d + LSHIFT")
-    Text((Config.width-150,18),"press cursor + RCTRL")
-
+    status1 = Text((Config.width/2, 18), "SchwarzWeiss", 36 )
+    score = Text((Config.width/2, 40),"%i (white player) vs. %i (black player) " % (0,0), 30)
+    lefttext = Text((Config.width/2,60),"white player: press w,a,s,d + LSHIFT", 24)
+    righttext = Text((Config.width/2,80),"black player: press cursor + RCTRL", 24)
+    el1 = Text((65,10),"energy reserve:",24)
+    ebl1 = Energybar((Config.width/4,10),player1,1)  # pos, boss, barnumber
+    el2 = Text((70,40),"energy loss/gain:",24)
+    el3 = Text((65,70),"energy change:",24)
+    er1 = Text((Config.width-155,35),"energy:",24)
     # ---- create neutral green tanks -----
     neutralx = Config.neutraltanks * Tank.side
     spaces = Config.neutraltanks + 1 # space and tank and space
@@ -928,9 +966,8 @@ def main():
         
  
         #print Field.fields, Field.whitesum , float(Field.whitesum / Field.fields)
-        score.changemsg("%.1f%% vs. %.1f%%" % (Field.whitesum *1.0 / Field.fields * 100 , Field.blacksum *1.0 / Field.fields *100 ))
-        pygame.display.set_caption("<<<: %i ?: %i >>>: %i -- %s FPS: %.2f " % ( Field.whitesum, 
-                                    Field.fields - (Field.whitesum + Field.blacksum), Field.blacksum, Config.title,clock.get_fps()))
+        score.changemsg("%.1f %%  vs. %.1f %%" % (Field.whitesum *1.0 / Field.fields * 100 , Field.blacksum *1.0 / Field.fields *100 ))
+        pygame.display.set_caption("FPS: %.2f press ESC to quit " % clock.get_fps())
         # ------------ textdisplays ---------------
         
         # ------------ win ------- 
