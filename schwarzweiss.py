@@ -78,7 +78,36 @@ class Spark(pygame.sprite.Sprite):
         self.rect.centerx = round(self.pos[0],0)
         self.rect.centery = round(self.pos[1],0)
         
+class Obstacle(pygame.sprite.Sprite):
+    """ a rectangular, bulletproof obstacle"""
+    def __init__(self, x,y, vertical = True):
+        pygame.sprite.Sprite.__init__(self, self.groups)
+        if vertical:
+            self.image = pygame.Surface((10,Tank.side))
+        else:
+            self.image = pygame.Surface((Tank.side, 10))
+        #self.image.set_colorkey((0,0,0))
+        self.red = 128
+        self.green = 128
+        self.blue = 0
+        self.dr = 1 # changing of red color
+        self.image.fill((self.red, self.green, self.blue))
+        self.image.convert()
+        self.rect = self.image.get_rect()
+        self.pos = [0,0]
+        self.pos[0] = x
+        self.pos[1] = y
+        self.rect.centerx = round(self.pos[0],0)
+        self.rect.centery = round(self.pos[1],0)
         
+    def update(self, seconds):
+        """slowly cycle the yellow-red color"""
+        self.red += self.dr
+        if self.red > 255 or self.red < 200:
+            self.dr *= -1
+            self.red = max(200, self.red)
+            self.red = min(255, self.red)
+        self.image.fill((self.red, self.green, self.blue))
         
 class Ball(pygame.sprite.Sprite):
     """ a big ball, let bulltes bounce and floats around the playfield"""
@@ -283,214 +312,8 @@ class Bullet(pygame.sprite.Sprite):
         self.rect.centery = round(self.pos[1],0)
 
         
-class altBullet(pygame.sprite.Sprite):
-    side = 10
-    vec = 180 # velocity
-    mass = 50
-    maxlifetime = 6.0 # seconds
-    #dxmin = 0.2 #minimal dx speed or Bullet will be killed
-    def __init__(self, boss):
-        pygame.sprite.Sprite.__init__(self, self.groups) # THE most important line !
-        self.boss = boss
-        self.static = False
-        self.mass = Bullet.mass
-        self.vec = Bullet.vec
-        self.radius = Bullet.side / 2 # for collision detection
-        self.color = self.boss.color
-        self.bordercolor = self.boss.bordercolor
-        self.book = {}
-        self.lifetime = 0.0
-        #self.bouncebook = {}
-        if self.boss.border == "left":
-            self.dy = math.sin(degrees_to_radians(-self.boss.angle)) * self.vec
-            self.dx = math.cos(degrees_to_radians(self.boss.angle)) * self.vec
-        elif self.boss.border == "right":
-            self.dy = math.sin(degrees_to_radians(-self.boss.angle)) * self.vec
-            self.dx = math.cos(degrees_to_radians(self.boss.angle)) * self.vec
-        self.value = 255
-        image = pygame.Surface((Bullet.side, Bullet.side))
-        image.fill((128,128,128)) # fill grey
-        pygame.draw.circle(image, self.color, (self.side/2,self.side/2), self.side/2) #  circle
-        pygame.draw.circle(image, (self.bordercolor), (self.side/2,self.side/2), self.side/2,3) #  circle
-        image.set_colorkey((128,128,128)) # grey transparent
-        self.image = image.convert_alpha()
-        self.rect = image.get_rect()
-
-        #    self.dx = -99
-        self.dy += self.boss.dy # add boss movement
-        self.pos = self.boss.pos[:] # copy (!!!) of boss position
-        self.update() # to avoid ghost sprite in upper left corner, force position calculation
-        
-    #def repaint(self):
-    #    pygame.draw.circle(image, self.color, (self.side/2,self.side/2), self.side/2) #  circle
-        
-    def update(self, seconds=0.0):
-        if self.value <= 0:
-            self.kill()
-        #if self.vec < 1:
-        #    self.kill()
-        self.lifetime += seconds
-        if self.lifetime > Bullet.maxlifetime:
-            self.kill()
-        #if -Bullet.dxmin < self.dx < Bullet.dxmin:
-        #    self.kill() # too few dx speed
-        self.pos[0] += self.dx * seconds
-        self.pos[1] += self.dy * seconds
-        # ----- kill if out of screen
-        if self.pos[0] < 0:
-            self.kill() # kill if leaving left border of playfield
-        elif self.pos[0] > Config.width:
-            self.kill()
-        # ----- bounce from upper or lower border
-        if self.pos[1] < 0:
-            self.pos[1] = 0
-            self.dy *= -1
-        elif self.pos[1] > Config.height:
-            self.pos[1] = Config.height
-            self.dy *= -1
-            #self.angle = rotate_toward_moving(self)
-        #------- move -------
-        self.rect.centerx = round(self.pos[0],0)
-        self.rect.centery = round(self.pos[1],0)
-        
         
     
-class altTank(pygame.sprite.Sprite):
-    # a tank moving up and down at on side of the screen
-    # bouncing at upper or lower screen edge
-    side = 100 # side of the quadratic tank sprite
-    recoiltime = 0.45 # how many seconds  the cannon is busy after firing one time
-    turnspeed = 25
-    movespeed = 88
-    maxrotate = 60
-    def __init__(self, border="left"):
-        """left... white, right...black"""
-        pygame.sprite.Sprite.__init__(self, self.groups) # THE most important line !
-        self.pos = [0.0,0.0] # x,y
-        self.border = border
-        self.side = Tank.side
-        self.pos[0] = 0.0
-        self.pos[1] = Config.height / 2 # <
-        self.dx = 0
-        self.dy = 0
-        if self.border == "left":
-            self.color = (255,255,255)
-            self.bordercolor = (0,255,0)
-            self.dy *= -1
-            self.pos[0] = self.side/2
-            self.angle = 0
-            self.normal = 0
-            self.firekey = pygame.K_LCTRL
-            self.leftkey = pygame.K_a
-            self.rightkey = pygame.K_d
-            self.upkey = pygame.K_w
-            self.downkey = pygame.K_s
-        elif self.border == "right":
-            self.color = (0,0,0)
-            self.bordercolor = (255,0,0)
-            self.pos[0] = Config.width - self.side/2
-            self.dy = 25
-            self.angle = 180
-            self.normal = 180
-            self.firekey = pygame.K_RETURN
-            self.leftkey = pygame.K_LEFT
-            self.rightkey = pygame.K_RIGHT
-            self.upkey = pygame.K_UP
-            self.downkey = pygame.K_DOWN
-        else:
-            print "ERROR in class Tank: only left or right at the moment"
-        
-        image = pygame.Surface((self.side,self.side)) # created on the fly
-        image.fill((128,128,128)) # fill grey
-        pygame.draw.circle(image, (self.color), (self.side/2,self.side/2), 50) # white/black filled circle
-        pygame.draw.circle(image, (self.bordercolor), (self.side/2,self.side/2), 50, 4) # outer red border circle
-        pygame.draw.line(image, (self.bordercolor), (0,self.side), (self.side/2,0), 4) # diagonal
-        pygame.draw.line(image, (self.bordercolor), (self.side/2,0), (self.side,self.side), 4) #diagonal
-        image.set_colorkey((128,128,128)) # grey transparent
-        self.imageUp = image.convert_alpha()
-        self.imageDown = pygame.transform.flip(self.imageUp, False, True) # y flip
-        #if self.dy < 0:
-        #    self.image = self.imageUp
-        #else:
-        #    self.image = self.imageDown
-        self.image = self.imageUp # default
-        self.rect = self.image.get_rect()
-        #---------- turret ------------------
-        self.firestatus = 0.0 # time left until cannon can fire again
-        self.turndirection = 0   
-        #self.angle = 0
-        self.movespeed = Tank.movespeed
-        self.turnspeed = Tank.turnspeed
-        Turret(self)
-        
-
-    
-        
-    def update(self, seconds):
-        # no need for seconds but the other sprites need it
-        
-        #-------- reloading, firestatus----------
-        if self.firestatus > 0:
-            self.firestatus -= seconds # cannon will soon be ready again
-            if self.firestatus <0:
-                self.firestatus = 0 #avoid negative numbers
-        # ------------ keyboard --------------
-        pressedkeys = pygame.key.get_pressed()
-        # -------- turret manual rotate ----------
-        self.turndirection = 0    #  left / right turret rotation
-        if pressedkeys[self.leftkey]:
-            self.turndirection += 1
-        if pressedkeys[self.rightkey]:
-            self.turndirection -= 1
-        self.updown = 0           # up / down tank movement
-        if pressedkeys[self.upkey]:
-            self.updown -= 1
-        if pressedkeys[self.downkey]:
-            self.updown += 1
-        self.dy = self.movespeed * self.updown
-        # ------------- up/down movement ---------------------
-        self.pos[1] += self.dy * seconds
-        if self.pos[1] + self.side/2 >= Config.height:
-            self.pos[1] = Config.height - self.side/2
-            #self.dy *= -1
-            #self.image = self.imageUp
-            self.dy = 0 # crash into border
-        elif self.pos[1] -self.side/2 <= 0:
-            self.pos[1] = 0 + self.side/2
-            #self.dy *= -1
-            #self.image = self.imageDown
-            self.dy = 0
-        if self.dy >0:
-            self.image = self.imageDown
-        elif self.dy <0:
-            self.image = self.imageUp
-        else:
-            pass # no movement up/down
-        self.rect.centerx = round(self.pos[0], 0) #x
-        self.rect.centery = round(self.pos[1], 0) #y
-        # -------- turret autorotate ----------
-        self.angle += self.turndirection * self.turnspeed * seconds # time-based turning
-        #if self.border == "left":   # normal position 0 Grad
-        if self.angle > self.normal + Tank.maxrotate:
-            #self.turndirection *= -1
-            self.angle = self.normal + Tank.maxrotate
-        elif self.angle < self.normal - Tank.maxrotate:
-            #self.turndirection *= -1
-            self.angle = self.normal - Tank.maxrotate
-        #elif self.border == "right":  # normal posiotion 180 Grad
-        #    if self.angle > 270:
-        #        #self.turndirection *= -1
-        #        self.angle = 270
-        #    elif self.angle < 90:
-        #        #self.turndirection *= -1
-        #        self.angle = 90
-        # --------------- fire? -----------
-        if self.firestatus ==0:   #auto-fire
-            #if pressedkeys[self.firekey]:
-                self.firestatus = Tank.recoiltime # seconds until tank can fire again
-                Bullet(self)    
-        else:
-                pass # cannon busy
 
 class Tracer(Bullet):
     """Tracer is nearly the same as Bullet, but smaller
@@ -1098,15 +921,17 @@ def main():
     
     tankgroup = pygame.sprite.Group()
     bulletgroup = pygame.sprite.Group()
-    allgroup = pygame.sprite.LayeredUpdates()
     fieldgroup = pygame.sprite.Group()
     ballgroup = pygame.sprite.Group() # obstacles
+    obstaclegroup = pygame.sprite.Group()
+    allgroup = pygame.sprite.LayeredUpdates()
     
     Tank._layer = 4
     Bullet._layer = 8
     Turret._layer = 6
     Field._layer = 2
     Ball._layer = 3
+    Obstacle._layer = 3
     Spark._layer = 2
     Text._layer = 9
  
@@ -1118,12 +943,16 @@ def main():
     Bullet.groups = bulletgroup, allgroup
     Ball.groups = ballgroup, allgroup
     Text.groups = allgroup
+    Obstacle.groups = allgroup, obstaclegroup
     
     # ---- create Tanks ------
     #         Tank(pos, turretAngle, tankAngle)
     player1 = Tank((Tank.side/2, Config.height/2 ), 0, 90)#
     player2 = Tank((Config.width - Tank.side/2,Config.height/2),180,90)
     
+    # ---- place obstacles ---
+    Obstacle(Config.width / 2, Tank.side/2, True) # upper border, vertical
+    Obstacle(Config.width / 2, Config.height - Tank.side/2, True) #lower border, vertical
     
     #---------- fill grid with Field sprites ------------
     
@@ -1186,6 +1015,9 @@ def main():
                     bull.value -= 4
                     bull.book[crashfield.number] = True
                     #Spark(bull.pos, crashfield.value)
+            
+        for obst in obstaclegroup:
+            crashgroup = pygame.sprite.spritecollide(obst, bulletgroup, True) # kill bullets in obstacles
                     
         for big in ballgroup:
             crashgroup = pygame.sprite.spritecollide(big, bulletgroup, False, pygame.sprite.collide_circle)       #pygame.sprite.collide_circle
