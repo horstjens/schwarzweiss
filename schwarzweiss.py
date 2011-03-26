@@ -109,99 +109,7 @@ class Obstacle(pygame.sprite.Sprite):
             self.red = min(255, self.red)
         self.image.fill((self.red, self.green, self.blue))
         
-class Ball(pygame.sprite.Sprite):
-    """ a big ball, let bulltes bounce and floats around the playfield"""
-    number = 0
-    side = 100
-    friction = 1.0
-    minspeed = 0.5
-    mass = 500
-    def __init__(self,x,y,area, dy ):
-        pygame.sprite.Sprite.__init__(self, self.groups)
-        self.number = Ball.number
-        Ball.number += 1
-        self.dy = dy
-        self.static = True
-        self.side = Ball.side
-        self.radius = self.side / 2
-        self.red = 128  # ----- colors ----
-        self.green = 128
-        self.blue = 128
-        self.dr = random.randint(1,15) * random.choice((-1,1)) 
-        self.dg = random.randint(5,15) * random.choice((-1,1))
-        self.db = random.randint(5,15) * random.choice((-1,1))
-        self.image = pygame.Surface((self.side, self.side))
-        self.image.fill((0,255,0)) # fill green
-        self.image.set_colorkey((0,255,0)) # green transparent
-        self.paint() # fill circles with color
-        self.rect = self.image.get_rect()
-        
-        self.pos = [0,0]
-        self.area = area # rect where i am allowed to be
-        self.pos[0] = x
-        self.pos[1] = y
-        self.rect.centerx = round(self.pos[0],0)
-        self.rect.centery = round(self.pos[1],0)
-        self.mass = Ball.mass
-        self.dx = 0
 
-    def paint(self):
-        #--- colorcycle ----
-        self.red += self.dr
-        self.green += self.dg
-        self.blue += self.db
-        if self.red > 255:
-            self.red = 255
-            self.dr *= -1
-        elif self.red < 0:
-            self.red = 0
-            self.dr *= -1
-        if self.green > 255:
-            self.green = 255
-            self.dg *= -1
-        elif self.green < 0:
-            self.green = 0
-            self.dg *= -1
-        if self.blue > 255:
-            self.blue = 255
-            self.db *= -1
-        elif self.blue < 0:
-            self.blue = 0
-            self.db *= -1    
-        pygame.draw.circle(self.image, (self.red,self.green,self.blue), (self.side/2, self.side/2), self.side/2) # colorful ring
-        pygame.draw.circle(self.image, (0,0,255), (self.side/2, self.side/2), self.side/2,1) # blue outer ring
-        #self.image.convert_alpha()
-        
-        
-    def update(self, seconds):
-        self.paint() # cycle colors
-        # ----------- move -----------
-        self.pos[0] += self.dx * seconds
-        self.pos[1] += self.dy * seconds
-        # -------- areacheck ------------
-        if self.pos[0] < self.area.left:
-            self.pos[0] = self.area.left
-            self.dx *= -1
-        elif self.pos[0] > self.area.right:
-            self.pos[0] = self.area.right
-            self.dx *= -1
-        if self.pos[1] < self.area.top:
-            self.pos[1] = self.area.top
-            #if self.wanderball:
-            #    self.upward *= -1
-            #else:
-            self.dy *= -1
-            
-        elif self.pos[1] > self.area.bottom:
-            self.pos[1] = self.area.bottom
-            #if self.wanderball:
-            #    self.upward *= -1
-            #else:
-            self.dy *= -1
-                
-        # ---------- move sprite -------
-        self.rect.centerx = round(self.pos[0],0)
-        self.rect.centery = round(self.pos[1],0)
 
 class Text(pygame.sprite.Sprite):
     def __init__(self, pos, msg):
@@ -393,6 +301,7 @@ class Tank(pygame.sprite.Sprite):
     #tankRightkey = (pygame.K_d, pygame.K_KP6)
     color = ((255,255,255), (0,0,0))
     #msg = ["wasd LCTRL, ijkl", "Keypad: 4852, ENTER, cursor"]
+
           
     def __init__(self, startpos = (150,150), turretangle=0, tankangle=90):
         self.number = Tank.number # now i have a unique tank number
@@ -402,7 +311,10 @@ class Tank(pygame.sprite.Sprite):
         self.pos = [startpos[0], startpos[1]] # x,y
         self.dx = 0
         self.dy = 0
-        self.radius = Turret.radius # 22? for collision detection and reflection of bullets
+        self.damage = 0
+        self.mass = 20000
+        self.static = True
+        self.radius = self.side / 3 # for collision detection
         #self.ammo = 30 # main gun
         self.mgammo = 500 # machinge gun
         
@@ -447,22 +359,23 @@ class Tank(pygame.sprite.Sprite):
         self.turretTurnSpeed = Tank.turretTurnSpeed
         self.tankTurnSpeed = Tank.tankTurnSpeed
         Turret(self) # create a Turret for this tank
-        if self.number >= 2: # neutral tanks
+        if self.number > 1: # neutral tanks
             self.dx = 0
-            # make speed between 1/4 and 3/4 of player speed with random direction
-            self.dy = (Tank.movespeed * 0.25 + random.random() * Tank.movespeed * 0.5) * random.choice((-1,1))
+            # make speed between 1/4 and 1/2 of player speed with random direction
+            self.dy = (Tank.movespeed * 0.25 + random.random() * Tank.movespeed * 0.25) * random.choice((-1,1))
             self.targetplayer = random.choice((0,1))
             
     def update(self, seconds):
         # no need for seconds but the other sprites need it
-        if self.number >= 2: # neutral tanks
+        if self.firestatus > 0:
+            self.firestatus -= seconds # cannon will soon be ready again
+            if self.firestatus <0:
+                self.firestatus = 0 #avoid negative numbers
+        if self.number > 1: # neutral tanks
              self.aim_at_player(self.targetplayer)
         else: # player tanks
             #-------- reloading, firestatus----------
-            if self.firestatus > 0:
-                self.firestatus -= seconds # cannon will soon be ready again
-                if self.firestatus <0:
-                    self.firestatus = 0 #avoid negative numbers
+
             #if self.mgfirestatus > 0:
             #    self.mgfirestatus -= seconds # bow mg will soon be ready again
             #    if self.mgfirestatus <0:
@@ -638,9 +551,9 @@ class Tank(pygame.sprite.Sprite):
         
         # at 180° the target is in sight
         if diff > 179 and diff < 181: # target in sight
-            print "Bumm"
+            #print "Bumm"
             self.turndirection = 0
-            #self.firestatus = Tank.recoiltime # seconds until tank can fire again
+            self.firestatus = Tank.recoiltime # seconds until tank can fire again
             Bullet(self)
             if self.targetplayer == 0:
                 self.targetplayer = 1
@@ -905,7 +818,6 @@ def main():
     tankgroup = pygame.sprite.Group()
     bulletgroup = pygame.sprite.Group()
     fieldgroup = pygame.sprite.Group()
-    ballgroup = pygame.sprite.Group() # obstacles
     obstaclegroup = pygame.sprite.Group()
     allgroup = pygame.sprite.LayeredUpdates()
     
@@ -913,7 +825,6 @@ def main():
     Bullet._layer = 8
     Turret._layer = 6
     Field._layer = 2
-    Ball._layer = 3
     Obstacle._layer = 3
     Spark._layer = 2
     Text._layer = 9
@@ -924,7 +835,6 @@ def main():
     Turret.groups = allgroup
     Spark.groups = allgroup
     Bullet.groups = bulletgroup, allgroup
-    Ball.groups = ballgroup, allgroup
     Text.groups = allgroup
     Obstacle.groups = allgroup, obstaclegroup
     
@@ -946,7 +856,7 @@ def main():
     lengthy = Config.height - 2* Tank.side
     Field.sidex = lengthx / Config.xtiles
     Field.sidey = lengthy / Config.ytiles
-    Ball.side = 2 * Field.sidex  # a Ball diameter is 2 times the length(x) of a field
+    #Ball.side = 2 * Field.sidex  # a Ball diameter is 2 times the length(x) of a field
     Field.cornerx = Tank.side
     Field.cornery = Tank.side
     # offset to center fields in x-axis of screen
@@ -997,19 +907,23 @@ def main():
                     bull.value -= 4
                     bull.book[crashfield.number] = True
                     #Spark(bull.pos, crashfield.value)
+                    
+        for tank in tankgroup:
+            crashgroup = pygame.sprite.spritecollide(tank, bulletgroup, False, pygame.sprite.collide_circle) # bullet bounce from Turret
+            for bouncebullet in crashgroup:
+                tank.damage += 1
+                if tank.number > 1: # neutral tank
+                    if bouncebullet.boss.number < 2: # bullet come from player
+                        tank.targetplayer = bouncebullet.boss.number
+                elastic_collision(bouncebullet, tank)
+                
+                
+            
             
         for obst in obstaclegroup:
             crashgroup = pygame.sprite.spritecollide(obst, bulletgroup, True) # kill bullets in obstacles
                     
-        for big in ballgroup:
-            crashgroup = pygame.sprite.spritecollide(big, bulletgroup, False, pygame.sprite.collide_circle)       #pygame.sprite.collide_circle
-            for bouncebullet in crashgroup:
-                #if not bouncebullet.bouncebook.has_key(big.number):
-                elastic_collision(big, bouncebullet)
-                #bouncebullet.bouncebook[big.number] = True
-            crashgroup = pygame.sprite.spritecollide(big, ballgroup, False, pygame.sprite.collide_circle)
-            for bigcrash in crashgroup:
-                elastic_collision(big, bigcrash)
+
                 
         
  
