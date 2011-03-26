@@ -3,8 +3,11 @@
 #
 #       schwarzweiss.py
 #       
-#       Copyright 2010 Horst JENS <horst.jens@spielend-programmieren.at>
-#
+#       author: Horst JENS <horst.jens@spielend-programmieren.at>
+#       license: GPL (see below)
+#       part of The Python Game Book
+#       homepage: http://thepythongamebook.com/en:resources:games:schwarzweiss
+#       source & download: https://github.com/horstjens/schwarzweiss
 #       needs Python 2.6 or better, pygame 1.9.1 or better
        
 #       This program is free software; you can redistribute it and/or modify
