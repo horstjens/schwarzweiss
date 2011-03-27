@@ -1025,7 +1025,7 @@ def game():
     #el4 = Text((50,70),"immobile: %.1f sec" % player1.pause,24)
     #el3 = Text((45,70),"change:",24)
     
-    
+    msg = "quit by user" # leace msg
     # ---- create neutral green tanks -----
     neutralx = Config.neutraltanks * Tank.side
     spaces = Config.neutraltanks + 1 # space and tank and space
@@ -1102,23 +1102,78 @@ def game():
         
         # ------------ win ------- 
         if Field.blacksum > Field.fields / 2:
-            status = "gameover"
-            print "========================= GAME OVER ===================================="
-            print "black side ist the winner"
+            #status = "gameover"
+            #print "========================= GAME OVER ===================================="
+            #print "black side ist the winner"
             #mainloop = False
-            return "black player is the winner (%.1f %% vs %.1f %%)" % (Field.blacksum *1.0 / Field.fields * 100 , Field.whitesum *1.0 / Field.fields *100 )
+            msg = "black player wins (%.1f %% vs %.1f %%)" % (Field.blacksum *1.0 / Field.fields * 100 , Field.whitesum *1.0 / Field.fields *100 )
+            mainloop = False
         elif Field.whitesum > Field.fields / 2:
-            print "========================= GAME OVER ===================================="
-            print "white side is the winner"
-            return "black white player is the winner (%.1f %% vs %.1f %%)" % (Field.whitesum *1.0 / Field.fields * 100 , Field.blacksum *1.0 / Field.fields *100 )
-            #mainloop = False
+            #print "========================= GAME OVER ===================================="
+            #print "white side is the winner"
+            msg=  "white player wins (%.1f %% vs %.1f %%)" % (Field.whitesum *1.0 / Field.fields * 100 , Field.blacksum *1.0 / Field.fields *100 )
+            mainloop = False
         #screen.blit(background, (0,0)) # delete all
         allgroup.clear(screen, background) # funny effect if you outcomment this line
         allgroup.update(seconds)
         allgroup.draw(screen)
         pygame.display.flip() # flip the screen 30 times a second
-    return "quit by user"
+    #pygame.quit()
+    return msg
 
+def menu(msg = ""):
+    """ a menu showing a help screen and letting the user start a game or quit"""
+    pygame.init()
+    screen=pygame.display.set_mode((320,200)) 
+    screenrect = screen.get_rect()
+    background = pygame.Surface((screen.get_size()))
+    backgroundrect = background.get_rect()
+    background.fill((128,128,255)) # fill grey light blue:(128,128,255) 
+    background = background.convert()
+
+    screen.blit(background, (0,0)) # delete all
+    menuloop = True
+    
+    allgroup = pygame.sprite.LayeredUpdates()
+    Text._layer = 4
+    Text.groups = allgroup
+    
+    Text((160, 20), "Schwarzweiss", 36)
+    Text((160, 40), "a 2-player tank game by HorstJENS", 24)
+    Text((160, 60), "convert fields to your color by shooting the fields" , 20)
+    Text((160, 75), "the player who first convert most fields wins", 20)
+    Text((160, 90), "shooting, moving and rotating cost energy", 20)
+    Text((160, 105), "waiting, hitting fields or tanks gains energy", 20)
+    Text((160, 135), "press p to play, Esc to quit", 36)
+    wintext = Text((160,160), msg, 24)
+    while menuloop:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                # pygame window closed by user
+                menuloop = False 
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    menuloop = False 
+                elif event.key == pygame.K_q:
+                    menuloop = False
+                elif event.key == pygame.K_p:
+                    # pygame.init()
+                    wintext.changemsg(game())
+                    screen=pygame.display.set_mode((320,200)) 
+                    screenrect = screen.get_rect()
+                    background = pygame.Surface((screen.get_size()))
+                    backgroundrect = background.get_rect()
+                    background.fill((128,128,255)) # fill grey light blue:(128,128,255) 
+                    background = background.convert()
+                    screen.blit(background, (0,0)) # delete all
+
+        allgroup.clear(screen, background) # funny effect if you outcomment this line
+        allgroup.update(1) # update needs seconds as argument and i dont have them now
+        allgroup.draw(screen)
+        pygame.display.flip() # flip the screen 30 times a second
+    #pygame.quit()
+        
 if __name__ == '__main__':
-    print game()
+    menu()
+    #print game()
 
