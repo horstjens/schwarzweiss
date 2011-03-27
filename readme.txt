@@ -8,6 +8,8 @@ install python2.6 from http://www.python.org for your Operation System. You can 
 
 install pygame1.9.1 for python 2.6 from http://www.pygame.org for your Operation System. You can try out newer version of pygame at your own risk.
 
+make sure you have the file schwarzweiss.py in your folder and in this folder the subfolder data with the soundfiles.
+
 start the game by typing
 
 python schwarzweiss.py 
@@ -36,7 +38,7 @@ horstjens@gmail.com
 so that i can update this readme.
 
 
-=== about ===
+=== how to play ===
 
 In the 2-player game "schwarzweiss", each player control a tank (white tank on the left border, black tank on the right border) and can move the tank up / down as well as rotate the tank turret (using keys).
 
@@ -50,6 +52,10 @@ energy management:
   shooting, rotating and moving cost energy.
   waitng, hitting fields and hitting tanks gains energy.
 
+=== customizing ===
+
+you can customzie the game by changing the values in the class Config, such as number of tiles, number of neutral tanks etc.
+The class Config is on of the first classes in the file schwarzweiss.py
 
 === license ===
 
