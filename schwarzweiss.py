@@ -59,8 +59,8 @@ class Config(object):
     width = 1024 # pixel
     height = 600 # picel
     fps = 100  # max. framerate in frames per second
-    xtiles = 10 # how many fields horizontal
-    ytiles = 5 # how many fields vertical
+    xtiles = 16 # how many fields horizontal
+    ytiles = 10 # how many fields vertical
     title = "Esc: quit, left player: WASD, right player: Cursor"
     neutraltanks = 2 # number of neutral tanks
     tankxpercent = 0.4 # left tank is allowed in the left 40 % of playfield
@@ -70,15 +70,15 @@ class Config(object):
     barmax = 10.0 # max value for energy gain/loss bar
     ebasegain = 100 # energy gain per second
     ehitgain = 1
-    eturrethitgain = 90 # once
-    egridgain = 50 # once
-    egridconvert = 500 # once
+    eturrethitgain = 25 # once
+    egridgain = 5 # once
+    egridconvert = 300 # once
     emoveloss = 50 # per second !
     erotateloss = 100 # per second !
     ebulletloss = 250 # once per shot 
     repairloss = 1 # per second !
     etracerloss = 4
-    ehitloss = 2
+    #ehitloss = 2
     eturrethitloss = 50
     emax = 1000
     ebulletmin = 500
@@ -1047,10 +1047,11 @@ def game():
                     tank.eminus += Config.eturrethitloss
                 elastic_collision(bouncebullet, tank)
             
-        for obst in obstaclegroup:
-            crashgroup = pygame.sprite.spritecollide(obst, bulletgroup, False) # kill bullets in obstacles
+        for obst in obstaclegroup: # kill bullets in obstacles
+            crashgroup = pygame.sprite.spritecollide(obst, bulletgroup, False) 
             for slurpbullet in crashgroup:
-                Config.slurp.play()
+                if slurpbullet.boss.number < 2: # only slurp for player bullets
+                    Config.slurp.play()
                 slurpbullet.kill()
                     
         score.changemsg("%.1f %%  vs. %.1f %%" % (Field.whitesum *1.0 / Field.fields * 100 , Field.blacksum *1.0 / Field.fields *100 ))
