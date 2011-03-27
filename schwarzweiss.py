@@ -29,8 +29,29 @@
 import pygame
 import random
 import math
+import os
+import sys
+
+
 
 GRAD = math.pi / 180 # 2 * pi / 360   # math module needs Radiant instead of Grad
+
+
+class Dummysound:
+    def play(self): pass
+
+def load_sound(file):
+    if not pygame.mixer: 
+        return Dummysound()
+    file = os.path.join('data', file)
+    try:
+        sound = pygame.mixer.Sound(file)
+        return sound
+    except pygame.error:
+        print 'Warning, unable to load,', file
+    return Dummysound()
+
+
 
 class Config(object):
     """the Config class is used to store some global game parameters"""
@@ -62,6 +83,11 @@ class Config(object):
     emax = 1000
     ebulletmin = 500
     etracermin = 50
+    #------sounds -----
+
+
+
+
 
 
 class Spark(pygame.sprite.Sprite):
@@ -104,7 +130,6 @@ class Obstacle(pygame.sprite.Sprite):
             self.image = pygame.Surface((10,Tank.side))
         else:
             self.image = pygame.Surface((Tank.side, 10))
-        #self.image.set_colorkey((0,0,0))
         self.red = 128
         self.green = 128
         self.blue = 0
@@ -145,7 +170,6 @@ class Bar(pygame.sprite.Sprite):
            self.barnumber = barnumber
            self.image = pygame.Surface((Bar.length,Bar.height))
            self.image.set_colorkey((0,0,0))
-           #pygame.draw.rect(self.image, (255,255,255),(0,0,Bar.length, Bar.height),1) # border
            self.rect = self.image.get_rect()
            self.rect.centerx = round(self.pos[0],0)
            self.rect.centery = round(self.pos[1],0)
@@ -153,13 +177,10 @@ class Bar(pygame.sprite.Sprite):
                self.red = 255
                self.green = 255
                self.blue = 0
-               #self.image.fill((self.red, self.green, self.blue))
-               #pygame.draw.rect(self.image, (255,255,255),(0,0,Bar.length, Bar.height),1) # border
            elif self.barnumber == 3: # pausebar
                self.red = 255
                self.green= 0
                self.blue = 255
-               
        
        def update(self, seconds):
            if self.barnumber == 1: # energy reserve
@@ -183,12 +204,8 @@ class Bar(pygame.sprite.Sprite):
                self.boss.eminussum = 0 # reset after use
                minuspercent = minus * 1.0 / Config.barmax
                minusx = int(minuspercent * (minuspercent * (Bar.length / 2.0)))
-               pygame.draw.rect( self.image, (255,0,0), 
-                                             (Bar.length / 2 - minusx, 0 , minusx, Bar.height)) # red loss
-               
+               pygame.draw.rect( self.image, (255,0,0), (Bar.length / 2 - minusx, 0 , minusx, Bar.height)) # red loss
                pygame.draw.line(self.image, (10,10,10),(Bar.length / 2, 0), (Bar.length/2, Bar.height),1) # black middle line
-               #diff = plusx-minusx
-               #pygame.draw.line(self.image, (255,0,255),(diff, 0), (diff, Bar.height),1) # black middle line
                pygame.draw.rect(self.image, (255,255,255),(0,0,Bar.length, Bar.height),1) # border
            elif self.barnumber == 3: # pausebar
                percent = min(5,self.boss.pause) * 1.0 / 5 # 5 seconds max pause for bar
@@ -285,8 +302,6 @@ class Bullet(pygame.sprite.Sprite):
     def update(self, seconds=0.0):
         if self.value <= 0:
             self.kill() 
-        # ---- kill if too old ---
-        # --- value kill
         self.lifetime += seconds
         if self.lifetime > self.maxlifetime:
             self.kill()
@@ -305,15 +320,10 @@ class Bullet(pygame.sprite.Sprite):
             self.pos[1] = max(0, self.pos[1])
             self.pos[1] = min(Config.height, self.pos[1])
             self.dy *= -1
-            self.rotate_toward_moving()
-            
+            self.rotate_toward_moving()            
         #------- move -------
         self.rect.centerx = round(self.pos[0],0)
         self.rect.centery = round(self.pos[1],0)
-
-        
-        
-    
 
 class Tracer(Bullet):
     """Tracer is nearly the same as Bullet, but smaller
@@ -348,19 +358,16 @@ class Tracer(Bullet):
         self.image0 = image.convert_alpha()
         self.image = pygame.transform.rotate(self.image0, self.angle)
         self.rect = self.image.get_rect()
-        if self.turret:
-            # turret mg
+        if self.turret:    # turret mg
             self.dx = math.cos(degrees_to_radians(self.boss.turretAngle)) * self.vel
             self.dy = math.sin(degrees_to_radians(-self.boss.turretAngle)) * self.vel
-        else:
-            # bow mg
+        else:    # bow mg
             self.dx = math.cos(degrees_to_radians(self.boss.tankAngle)) * self.vel
             self.dy = math.sin(degrees_to_radians(-self.boss.tankAngle)) * self.vel
 
     def calculate_origin(self):
         """overwriting because another point of origin is needed"""
-        # - spawn bullet at end of machine gun muzzle (bow or turret)
-        if self.turret:
+        if self.turret:  # - spawn bullet at end of machine gun muzzle (bow or turret)
             self.pos[0] +=  math.cos(degrees_to_radians(-90+self.boss.turretAngle)) * 15
             self.pos[1] +=  math.sin(degrees_to_radians(90-self.boss.turretAngle)) * 15
         else:
@@ -379,25 +386,16 @@ class Tank(pygame.sprite.Sprite):
     turretTurnSpeed = 50 # turret
     tankTurnSpeed = 80 # tank
     movespeed = 80
-    #maxrotate = 360 # maximum amount of degree the turret is allowed to rotate
     book = {} # a book of tanks to store all tanks
     number = 0 # each tank gets his own number
     # keys for tank control, expand if you need more tanks
     #          player1,        player2    etc
     firekey = (pygame.K_LSHIFT, pygame.K_RCTRL)
-    #mgfirekey = (pygame.K_LCTRL, pygame.K_KP_ENTER)
-    #mg2firekey = (pygame.K_i, pygame.K_UP)
     turretLeftkey = (pygame.K_a, pygame.K_LEFT)
     turretRightkey = (pygame.K_d, pygame.K_RIGHT)
     forwardkey = (pygame.K_w, pygame.K_UP)
     backwardkey = (pygame.K_s, pygame.K_DOWN)
-    #tankLeftkey = (pygame.K_a, pygame.K_KP4)
-    #tankRightkey = (pygame.K_d, pygame.K_KP6)
     color = ((255,255,255), (0,0,0))
-    #msg = ["wasd LCTRL, ijkl", "Keypad: 4852, ENTER, cursor"]
-    # ----- energy gain and loss per second -----
-
-    
           
     def __init__(self, startpos = (150,150), turretangle=0, tankangle=90):
         self.number = Tank.number # now i have a unique tank number
@@ -411,19 +409,16 @@ class Tank(pygame.sprite.Sprite):
         self.mass = 20000
         self.static = True
         self.radius = self.side / 3 # for collision detection
-        #self.ammo = 30 # main gun
         self.mgammo = 500 # machinge gun
         self.energy = 550 # a bit more than 50%
         self.eplus = 0
         self.eminus = 0
         self.eminussum = 0
         self.eplussum = 0
-        self.pause = 0.0 # after a turret hit, the tank is immobile for some time
-        
+        self.pause = 0.0 # after a turret hit, the tank is immobile for some time        
         self.turretAngle = turretangle #turret facing
         self.tankAngle = tankangle # tank facing
-        #self.msg =  "tank%i: x:%i y:%i facing: turret:%i tank:%i"  % (self.number, self.pos[0], self.pos[1], self.turretAngle, self.tankAngle )
-        #Text((Config.width/2, 30+20*self.number), self.msg) # create status line text sprite
+
         if self.number < 2:
             self.color = Tank.color[self.number]
             self.firekey = Tank.firekey[self.number] # main gun
@@ -435,9 +430,6 @@ class Tank(pygame.sprite.Sprite):
             self.backwardkey = Tank.backwardkey[self.number] # reverse tank
         else: # neutral tank
             self.color = (0,200,0) # dark green
-        #self.tankLeftkey = Tank.tankLeftkey[self.number] # rotate tank
-        #self.tankRightkey = Tank.tankRightkey[self.number] # rotat tank
-        # painting facing north, have to rotate 90° later
         image = pygame.Surface((Tank.side,Tank.side)) # created on the fly
         image.fill((128,128,128)) # fill grey
         if self.side > 10:
@@ -462,19 +454,16 @@ class Tank(pygame.sprite.Sprite):
         self.tankTurnSpeed = Tank.tankTurnSpeed
         Turret(self) # create a Turret for this tank
         if self.number > 1: # neutral tanks
-            self.dx = 0
-            # make speed between 1/4 and 1/2 of player speed with random direction
+            self.dx = 0   # make speed between 1/4 and 1/2 of player speed with random direction
             self.dy = (Tank.movespeed * 0.25 + random.random() * Tank.movespeed * 0.25) * random.choice((-1,1))
             self.targetplayer = random.choice((0,1))
             
-    def update(self, seconds):
-        # no need for seconds but the other sprites need it
+    def update(self, seconds):   # no need for seconds but the other sprites need it
         if self.firestatus > 0:
             self.firestatus -= seconds # cannon will soon be ready again
             if self.firestatus <0:
                 self.firestatus = 0 #avoid negative numbers
-        # immoble, pause ?
-        if self.pause > 0:
+        if self.pause > 0:  # immoble, pause ?
             self.pause -= seconds
             self.eminus += Config.repairloss
             if self.pause < 0:
@@ -490,16 +479,9 @@ class Tank(pygame.sprite.Sprite):
              self.pos[1] += self.dy * seconds * self.forward
         else: # ------------------------player tanks ------------------
             #-------- reloading, firestatus----------
-
-            #if self.mgfirestatus > 0:
-            #    self.mgfirestatus -= seconds # bow mg will soon be ready again
-            #    if self.mgfirestatus <0:
-            #        self.mgfirestatus = 0 #avoid negative numbers
             if self.mg2firestatus > 0:
                 self.mg2firestatus -= seconds # turret mg will soon be ready again
                 self.mg2firestatus = max(0, self.mg2firestatus)
-            #        self.mg2firestatus = 0 #avoid negative numbers
-            
             # ------------ keyboard --------------
             pressedkeys = pygame.key.get_pressed()
             # -------- turret manual rotate ----------
@@ -515,12 +497,6 @@ class Tank(pygame.sprite.Sprite):
                     self.eminus += Config.erotateloss * seconds
             #---------- tank rotation ---------
             self.tankturndirection = 0 # reset left/right rotation
-            #if pressedkeys[self.tankLeftkey]:
-            #    self.tankturndirection = 1
-            #if pressedkeys[self.tankRightkey]:
-            #    self.tankturndirection = -1
-            
-
             # ---------- fire cannon -----------
             #if (self.firestatus ==0) and (self.ammo > 0):
             if (self.firestatus ==0) :
@@ -528,31 +504,17 @@ class Tank(pygame.sprite.Sprite):
                     if (self.energy > Config.ebulletloss):
                         self.firestatus = Tank.recoiltime # seconds until tank can fire again
                         self.eminus += Config.ebulletloss
+                        if self.number == 0:
+                            Config.schuss2.play()
+                        elif self.number == 1:
+                            Config.schuss3.play()
                         Bullet(self) 
                     elif (self.energy > Config.etracerloss) and self.mg2firestatus == 0:
                         self.mg2firestatus = Tank.mgrecoiltime
                         self.eminus += Config.etracerloss
+                        Config.mg1.play()
                         Tracer(self, True)
-                    #self.ammo -= 1
-                    #self.msg =  "player%i: ammo: %i/%i keys: %s" % (self.number+1, self.ammo, self.mgammo, Tank.msg[self.number])
-                    #Text.book[self.number].changemsg(self.msg)
-            # -------- fire bow mg ---------------
-            #if (self.mgfirestatus ==0) and (self.mgammo >0):
-            #    if pressedkeys[self.mgfirekey]:
-            #        self.mgfirestatus = Tank.mgrecoiltime
-            #        Tracer(self, False) # turret mg = False
-            #        self.mgammo -= 1
-            #        #self.msg = "player%i: ammo: %i/%i keys: %s" % (self.number+1, self.ammo, self.mgammo, Tank.msg[self.number])
-            #        #Text.book[self.number].changemsg(self.msg)
-            # -------- fire turret mg ---------------
-            #if (self.mg2firestatus ==0) and (self.mgammo >0):
-            #    if pressedkeys[self.mg2firekey]:
-            #        self.mg2firestatus = Tank.mgrecoiltime # same recoiltime for both mg's
-            #        Tracer(self, True) # turret mg = True
-            #        self.mgammo -= 1
-            #        #self.msg =  "player%i: ammo: %i/%i keys: %s" % (self.number+1, self.ammo, self.mgammo, Tank.msg[self.number])
-            #        #Text.book[self.number].changemsg(self.msg)
-            # ---------- movement ------------
+
             self.dx = 0
             self.dy = 0
             self.forward = 0 # movement calculator
@@ -570,7 +532,6 @@ class Tank(pygame.sprite.Sprite):
                 self.dx =  -math.cos(degrees_to_radians(self.tankAngle)) * self.movespeed
                 self.dy =  math.sin(degrees_to_radians(self.tankAngle)) * self.movespeed
             # ----- energy sum ---
-            
             self.energy += self.eplus
             self.energy -= self.eminus
             self.eplussum = self.eplus
@@ -587,7 +548,6 @@ class Tank(pygame.sprite.Sprite):
             self.pos[0] += self.dx * seconds
             self.pos[1] += self.dy * seconds
         # ---- check norht / south border. rotate tank if touching border and moving
-        #print self.tankAngle
         # -------- south border ---------
         # messy code
         if self.number > 1 and self.pos[1] > Config.height - Tank.side * 1.5:
@@ -658,10 +618,6 @@ class Tank(pygame.sprite.Sprite):
                        self.tankturndirection = -1
                    elif self.tankAngle < 90 and self.forward == 1: # lower right corner, turn left
                        self.tankturndirection = 1
-                       
-                
-            
-            
         # ---------------- rotate tank ---------------
         self.tankAngle += self.tankturndirection * self.tankTurnSpeed * seconds # time-based turning of tank
         # angle etc from Tank (boss)
@@ -673,9 +629,6 @@ class Tank(pygame.sprite.Sprite):
         # if tank is rotating, turret is also rotating with tank !
         # -------- turret autorotate ----------
         self.turretAngle += self.tankturndirection * self.tankTurnSpeed * seconds  + self.turndirection * self.turretTurnSpeed * seconds # time-based turning                
-                
-                
-                
         # --------- move -------
         self.rect.centerx = round(self.pos[0], 0) #x
         self.rect.centery = round(self.pos[1], 0) #y    
@@ -689,12 +642,12 @@ class Tank(pygame.sprite.Sprite):
         deltay = Tank.book[targetnumber].pos[1] - self.pos[1]
         angle =   math.atan2(-deltax, -deltay)/math.pi*180.0            
         diff = (angle - self.turretAngle - 90) %360 #reset at 360
-        
         # at 180° the target is in sight
         if diff > 179 and diff < 181: # target in sight
             #print "Bumm"
             self.turndirection = 0
             self.firestatus = Tank.recoiltime # seconds until tank can fire again
+            Config.schuss1.play()
             Bullet(self)
             if self.targetplayer == 0:
                 self.targetplayer = 1
@@ -713,7 +666,6 @@ class Turret(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self, self.groups) # THE most important line !
         self.boss = boss
         self.side = self.boss.side
-        
         self.images = {} # how much recoil after shooting, reverse order of apperance
         self.images[0] = self.draw_cannon(0)  # idle position
         self.images[1] = self.draw_cannon(1)
@@ -755,9 +707,6 @@ class Turret(pygame.sprite.Sprite):
          image.set_colorkey((128,128,128))
          return image            
             
-
-
-
 class Field(pygame.sprite.Sprite):
     sidex = 164
     sidey = 48
@@ -782,7 +731,6 @@ class Field(pygame.sprite.Sprite):
         self.image.fill((value,value,value))
         pygame.draw.rect(self.image,  (128,128,255), (0,0,Field.sidex, Field.sidey),1) # grid-rect around field
         self.rect = self.image.get_rect()
-        
         self.rect.centerx = Field.offsetx + Field.cornerx + Field.sidex / 2 + self.posx * Field.sidex
         self.rect.centery = Field.cornery + Field.sidey / 2 + self.posy * Field.sidey
         self.black = False
@@ -810,11 +758,13 @@ class Field(pygame.sprite.Sprite):
             sparks = 4 # how many sparks
             if self.value == 0:
                 self.black = True
+                Config.convert1.play()
                 Field.blacksum += 1
                 sparks = 10 
                 Tank.book[1].eplus += Config.egridconvert # player1
             elif self.value == 255:
                 self.white = True
+                Config.convert2.play()
                 Field.whitesum += 1
                 sparks = 10
                 Tank.book[0].eplus += Config.egridconvert # player0
@@ -829,9 +779,7 @@ class Field(pygame.sprite.Sprite):
             for x in range(sparks):
                 Spark(self.rect.center,color, offset + (x+1) *(2*math.pi/sparks), sparks * 0.1)
                 
-    
 #------------ defs ------------------
-
 
 def radians_to_degrees(radians):
     return (radians / math.pi) * 180.0
@@ -923,7 +871,13 @@ def write(msg="pygame is cool", fontsize = 32, color=(0,0,0)):
     mytext = mytext.convert_alpha()
     return mytext        
 
+
+
+
 def game():
+    
+    
+    pygame.mixer.pre_init(44100, -16, 2, 2048) # setup mixer to avoid sound lag
     pygame.init()
     screen=pygame.display.set_mode((Config.width,Config.height)) 
     screenrect = screen.get_rect()
@@ -937,6 +891,22 @@ def game():
     #pygame.draw.rect(background, (0,0,0), (Config.width-Tank.side,0,Tank.side, Config.height)) # strip for right tank
     background = background.convert()
     #background0 = background.copy()
+    
+    #--sounds--
+    Config.convert1 = load_sound('blip1.ogg')  #load sound
+    Config.convert2 = load_sound("blip2.ogg")
+    Config.convert3 = load_sound("convert1.ogg")
+    Config.convert4 = load_sound("convert2.ogg")
+    Config.explo1 = load_sound("explo3.ogg")
+    Config.explo2 = load_sound("explo4.ogg")
+    Config.explo3 = load_sound("explo5.ogg")
+    Config.mg1 = load_sound("mg1.ogg")
+    Config.slurp = load_sound("hit2.ogg")
+    Config.schuss1 = load_sound("schuss1.ogg")
+    Config.schuss2 = load_sound("schuss2.ogg")
+    Config.schuss3 = load_sound("schuss3.ogg")
+    Config.gameover = load_sound("gameover.ogg")
+
 
 
     screen.blit(background, (0,0)) # delete all
@@ -944,7 +914,6 @@ def game():
     mainloop = True
     FPS = Config.fps         # desired max. framerate in frames per second. 
     playtime = 0
-    
     
     tankgroup = pygame.sprite.Group()
     bulletgroup = pygame.sprite.Group()
@@ -983,7 +952,6 @@ def game():
     Obstacle(Config.width / 2, Config.height - Tank.side/2, True) #lower border, vertical
     
     #---------- fill grid with Field sprites ------------
-    
     # how much space x in playfield ?
     lengthx = Config.width - 2* Tank.side
     lengthy = Config.height - 2* Tank.side
@@ -1018,13 +986,6 @@ def game():
     ebr2 = Bar((Config.width - Config.width/4, 50), player2, 2) # +/- bar
     er4 = Text((Config.width - 50,70),"immobile: %.1f sec" % player2.pause,24)
     pbr  = Bar((Config.width - Config.width/4,70),player2,3) # pause bar
-    
-    
-    
-    
-    #el4 = Text((50,70),"immobile: %.1f sec" % player1.pause,24)
-    #el3 = Text((45,70),"change:",24)
-    
     msg = "quit by user" # leace msg
     # ---- create neutral green tanks -----
     neutralx = Config.neutraltanks * Tank.side
@@ -1034,7 +995,7 @@ def game():
          Tank((Tank.side + (neutralnumber+1) * spacex + (neutralnumber + 1) * Tank.side - Tank.side/2,
               Config.height/2), 90, 90)
 
-           
+    print "starting mainloop", mainloop       
     while mainloop:
         milliseconds = clock.tick(Config.fps)  # milliseconds passed since last frame
         seconds = milliseconds / 1000.0 # seconds passed since last frame (float)
@@ -1048,7 +1009,6 @@ def game():
                 if event.key == pygame.K_ESCAPE:
                     mainloop = False 
 
-        
         for bull in bulletgroup:  
             crashgroup = pygame.sprite.spritecollide(bull, fieldgroup, False )      #pygame.sprite.collide_circle
             for crashfield in crashgroup:
@@ -1071,29 +1031,28 @@ def game():
                     tank.pause += Config.maxpause # tank will become immobile after a direct hit.
                 if tank.number > 1: # neutral tank
                     if bouncebullet.boss.number < 2: # bullet come from player
+                        Config.explo3.play()
                         tank.targetplayer = bouncebullet.boss.number
                         bouncebullet.boss.eplus += Config.eturrethitgain
                 elif tank.number == 1 and bouncebullet.boss.number == 0:
+                    Config.explo2.play()
                     player1.eplus += Config.eturrethitgain
                     player2.eminus += Config.eturrethitloss
                 elif tank.number == 0 and bouncebullet.boss.number == 1:
+                    Config.explo1.play()
                     player2.eplus += Config.eturrethitgain
                     player1.eminus += Config.eturrethitloss
                 elif tank.number < 2 and bouncebullet.boss.number > 1:
+                    Config.explo3.play()
                     tank.eminus += Config.eturrethitloss
                 elastic_collision(bouncebullet, tank)
-                
-                
-            
             
         for obst in obstaclegroup:
-            crashgroup = pygame.sprite.spritecollide(obst, bulletgroup, True) # kill bullets in obstacles
+            crashgroup = pygame.sprite.spritecollide(obst, bulletgroup, False) # kill bullets in obstacles
+            for slurpbullet in crashgroup:
+                Config.slurp.play()
+                slurpbullet.kill()
                     
-
-                
-        
- 
-        #print Field.fields, Field.whitesum , float(Field.whitesum / Field.fields)
         score.changemsg("%.1f %%  vs. %.1f %%" % (Field.whitesum *1.0 / Field.fields * 100 , Field.blacksum *1.0 / Field.fields *100 ))
         el4.changemsg("immobile: %.1f" % player1.pause)
         er4.changemsg("immobile: %.1f" % player2.pause)
@@ -1102,23 +1061,16 @@ def game():
         
         # ------------ win ------- 
         if Field.blacksum > Field.fields / 2:
-            #status = "gameover"
-            #print "========================= GAME OVER ===================================="
-            #print "black side ist the winner"
-            #mainloop = False
             msg = "black player wins (%.1f %% vs %.1f %%)" % (Field.blacksum *1.0 / Field.fields * 100 , Field.whitesum *1.0 / Field.fields *100 )
             mainloop = False
         elif Field.whitesum > Field.fields / 2:
-            #print "========================= GAME OVER ===================================="
-            #print "white side is the winner"
             msg=  "white player wins (%.1f %% vs %.1f %%)" % (Field.whitesum *1.0 / Field.fields * 100 , Field.blacksum *1.0 / Field.fields *100 )
             mainloop = False
-        #screen.blit(background, (0,0)) # delete all
         allgroup.clear(screen, background) # funny effect if you outcomment this line
         allgroup.update(seconds)
         allgroup.draw(screen)
         pygame.display.flip() # flip the screen 30 times a second
-    #pygame.quit()
+    pygame.quit()
     return msg
 
 def menu(msg = ""):
