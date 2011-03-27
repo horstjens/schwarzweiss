@@ -46,6 +46,7 @@ class Config(object):
     maxpause = 1.0 # seconds of immobilisation after turret hit
     #---- tank energy gain and loss (per second) -----
     tracktolerance = 15 # tolerance (pixel) for turning tank in corner
+    barmax = 10.0 # max value for energy gain/loss bar
     ebasegain = 100 # energy gain per second
     ehitgain = 1
     eturrethitgain = 90 # once
@@ -173,20 +174,21 @@ class Bar(pygame.sprite.Sprite):
            elif self.barnumber == 2: # plus minus bar
                #print "bar..... ", self.boss.eplus, self.boss.eminus
                self.image.fill((0,0,0)) # fill transparent
-               plus = min(self.boss.eplus, 5) # cap gain at 100
-               pluspercent = plus * 1.0 / 5.0
+               plus = min(self.boss.eplussum, Config.barmax) # cap gain at barmax
+               self.boss.eplussum = 0 # reset after use
+               pluspercent = plus * 1.0 / Config.barmax
                plusx = int(pluspercent * (Bar.length / 2.0))
                pygame.draw.rect( self.image, (0,255,0), (Bar.length/2, 0, plusx, Bar.height)) # green gain
-               minus = min(self.boss.eminussum, 5) # cap loss at 5
+               minus = min(self.boss.eminussum, Config.barmax) # cap loss at barmax
                self.boss.eminussum = 0 # reset after use
-               minuspercent = minus * 1.0 / 5.0
+               minuspercent = minus * 1.0 / Config.barmax
                minusx = int(minuspercent * (minuspercent * (Bar.length / 2.0)))
                pygame.draw.rect( self.image, (255,0,0), 
                                              (Bar.length / 2 - minusx, 0 , minusx, Bar.height)) # red loss
                
                pygame.draw.line(self.image, (10,10,10),(Bar.length / 2, 0), (Bar.length/2, Bar.height),1) # black middle line
-               diff = plusx-minusx
-               pygame.draw.line(self.image, (255,0,255),(diff, 0), (diff, Bar.height),1) # black middle line
+               #diff = plusx-minusx
+               #pygame.draw.line(self.image, (255,0,255),(diff, 0), (diff, Bar.height),1) # black middle line
                pygame.draw.rect(self.image, (255,255,255),(0,0,Bar.length, Bar.height),1) # border
            elif self.barnumber == 3: # pausebar
                percent = min(5,self.boss.pause) * 1.0 / 5 # 5 seconds max pause for bar
@@ -253,9 +255,9 @@ class Bullet(pygame.sprite.Sprite):
         self.vel = Bullet.vel
         image = pygame.Surface((Bullet.side * 2, Bullet.side)) # rect 2 x 1
         image.fill((128,128,128)) # fill grey
-        pygame.draw.rect(image, self.color, (0,0,Bullet.side * 1.5, Bullet.side)) # rectangle 1.5 length
-        pygame.draw.circle(image, self.color, (self.side *1.5 ,self.side/2), self.side/2) #  circle
-        pygame.draw.rect(image, (255,0,0), (0,0,Bullet.side * 1.5, Bullet.side),1) # rectangle 1.5 length
+        pygame.draw.rect(image, self.color, (0,0,int(Bullet.side * 1.5), Bullet.side)) # rectangle 1.5 length
+        pygame.draw.circle(image, self.color, (int(self.side *1.5) ,self.side/2), self.side/2) #  circle
+        pygame.draw.rect(image, (255,0,0), (0,0,int(Bullet.side * 1.5), Bullet.side),3) # rectangle 1.5 length
         image.set_colorkey((128,128,128)) # grey transparent
         
         
@@ -415,6 +417,7 @@ class Tank(pygame.sprite.Sprite):
         self.eplus = 0
         self.eminus = 0
         self.eminussum = 0
+        self.eplussum = 0
         self.pause = 0.0 # after a turret hit, the tank is immobile for some time
         
         self.turretAngle = turretangle #turret facing
@@ -431,7 +434,7 @@ class Tank(pygame.sprite.Sprite):
             self.forwardkey = Tank.forwardkey[self.number] # move tank
             self.backwardkey = Tank.backwardkey[self.number] # reverse tank
         else: # neutral tank
-            self.color = (0,128,0) # dark green
+            self.color = (0,200,0) # dark green
         #self.tankLeftkey = Tank.tankLeftkey[self.number] # rotate tank
         #self.tankRightkey = Tank.tankRightkey[self.number] # rotat tank
         # painting facing north, have to rotate 90° later
@@ -809,6 +812,7 @@ class Field(pygame.sprite.Sprite):
                 self.black = True
                 Field.blacksum += 1
                 sparks = 10 
+                Tank.book[1].eplus += Config.egridconvert # player1
             elif self.value == 255:
                 self.white = True
                 Field.whitesum += 1
@@ -816,10 +820,12 @@ class Field(pygame.sprite.Sprite):
                 Tank.book[0].eplus += Config.egridconvert # player0
             if amount < 0:   # field becomes more black
                 offset = 0  
-                color = (0,255,0)  
+                color = (0,255,0) 
+                Tank.book[1].eplus += Config.egridgain 
             else:
                 offset = math.pi/4.0    # field becomes more white
                 color = (255,0,0)
+                Tank.book[0].eplus += Config.egridgain
             for x in range(sparks):
                 Spark(self.rect.center,color, offset + (x+1) *(2*math.pi/sparks), sparks * 0.1)
                 
@@ -917,7 +923,7 @@ def write(msg="pygame is cool", fontsize = 32, color=(0,0,0)):
     mytext = mytext.convert_alpha()
     return mytext        
 
-def main():
+def game():
     pygame.init()
     screen=pygame.display.set_mode((Config.width,Config.height)) 
     screenrect = screen.get_rect()
@@ -1007,11 +1013,11 @@ def main():
     
     er0 = Text((Config.width  - 45,10),"Energy",24) #-------------- right player
     er1 = Text((Config.width -  45,30),"reserve",24)
-    ebr1 = Bar((Config.width - Config.width/4,30),player1,1)  # reserve bar. pos, boss, barnumber
+    ebr1 = Bar((Config.width - Config.width/4,30),player2,1)  # reserve bar. pos, boss, barnumber
     er2 = Text((Config.width - 50,50),"+ / -:",24)
-    ebr2 = Bar((Config.width - Config.width/4, 50), player1, 2) # +/- bar
-    er4 = Text((Config.width - 50,70),"immobile: %.1f sec" % player1.pause,24)
-    pbr  = Bar((Config.width - Config.width/4,70),player1,3) # pause bar
+    ebr2 = Bar((Config.width - Config.width/4, 50), player2, 2) # +/- bar
+    er4 = Text((Config.width - 50,70),"immobile: %.1f sec" % player2.pause,24)
+    pbr  = Bar((Config.width - Config.width/4,70),player2,3) # pause bar
     
     
     
@@ -1096,20 +1102,23 @@ def main():
         
         # ------------ win ------- 
         if Field.blacksum > Field.fields / 2:
+            status = "gameover"
             print "========================= GAME OVER ===================================="
             print "black side ist the winner"
-            mainloop = False
+            #mainloop = False
+            return "black player is the winner (%.1f %% vs %.1f %%)" % (Field.blacksum *1.0 / Field.fields * 100 , Field.whitesum *1.0 / Field.fields *100 )
         elif Field.whitesum > Field.fields / 2:
             print "========================= GAME OVER ===================================="
             print "white side is the winner"
-            mainloop = False
+            return "black white player is the winner (%.1f %% vs %.1f %%)" % (Field.whitesum *1.0 / Field.fields * 100 , Field.blacksum *1.0 / Field.fields *100 )
+            #mainloop = False
         #screen.blit(background, (0,0)) # delete all
         allgroup.clear(screen, background) # funny effect if you outcomment this line
         allgroup.update(seconds)
         allgroup.draw(screen)
         pygame.display.flip() # flip the screen 30 times a second
-    return 0
+    return "quit by user"
 
 if __name__ == '__main__':
-    main()
+    print game()
 
