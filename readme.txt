@@ -2,6 +2,18 @@ schwarzweiss readme file
 
 schwarzweiss is a German word maening "blackwhite". The schwarzweiss game is written in python (2.6) and pygame (1.9.1) and tested on Linux (Ubuntu 10.10).
 
+=== installation ===
+
+install python2.6 from http://www.python.org for your Operation System. You can try out newer version of python at your own risk.
+
+install pygame1.9.1 for python 2.x from http://www.pygame.org for your Operation System. You can try out newer version of pygame at your own risk.
+
+start the game by typing
+
+python schwarzweiss.py 
+
+or by launching it with another mehtod (double-clicking etc.)
+
 === about ===
 
 In the 2-player game "schwarzweiss", each player control a tank (white tank on the left border, black tank on the right border) and can move the tank up / down as well as rotate the tank turret (using keys).
@@ -21,7 +33,7 @@ energy management:
 
 This game is GPL licensed and thus free to copy, distribute and modify. You can do whatever you want with it, as long as the game and the derived work remain free.
 
-=== programmer ===
+=== author ===
 
 Horst JENS
 horstjens@spielend-programmieren.at
