@@ -48,9 +48,9 @@ class Config(object):
     width = 1024 # pixel
     height = 600 # picel
     fps = 100  # max. framerate in frames per second
-    xtiles = 16 # how many fields horizontal
+    xtiles = 10 # how many fields horizontal
     ytiles = 10 # how many fields vertical
-    title = "Esc: quit, left player: WASD, right player: Cursor"
+    #title = "Esc: quit, left player: WASD, right player: Cursor"
     neutraltanks = 2 # number of neutral tanks
     tankxpercent = 0.4 # left tank is allowed in the left 40 % of playfield
     maxpause = 1.0 # seconds of immobilisation after turret hit
