@@ -37,19 +37,8 @@ import sys
 GRAD = math.pi / 180 # 2 * pi / 360   # math module needs Radiant instead of Grad
 
 
-class Dummysound:
-    def play(self): pass
 
-def load_sound(file):
-    if not pygame.mixer: 
-        return Dummysound()
-    file = os.path.join('data', file)
-    try:
-        sound = pygame.mixer.Sound(file)
-        return sound
-    except pygame.error:
-        print 'Warning, unable to load,', file
-    return Dummysound()
+
 
 
 
@@ -68,14 +57,14 @@ class Config(object):
     #---- tank energy gain and loss (per second) -----
     tracktolerance = 15 # tolerance (pixel) for turning tank in corner
     barmax = 10.0 # max value for energy gain/loss bar
-    ebasegain = 100 # energy gain per second
+    ebasegain = 45 # energy gain per second
     ehitgain = 1
     eturrethitgain = 25 # once
     egridgain = 5 # once
     egridconvert = 300 # once
-    emoveloss = 50 # per second !
-    erotateloss = 100 # per second !
-    ebulletloss = 250 # once per shot 
+    emoveloss = 10 # per second !
+    erotateloss = 200 # per second !
+    ebulletloss = 300 # once per shot 
     repairloss = 1 # per second !
     etracerloss = 4
     #ehitloss = 2
@@ -87,7 +76,8 @@ class Config(object):
 
 
 
-
+class Dummysound:
+    def play(self): pass
 
 
 class Spark(pygame.sprite.Sprite):
@@ -121,6 +111,45 @@ class Spark(pygame.sprite.Sprite):
         self.pos[1] += self.vec * self.dy * seconds
         self.rect.centerx = round(self.pos[0],0)
         self.rect.centery = round(self.pos[1],0)
+
+class Rocket(pygame.sprite.Sprite):
+    """a rocket that fires only when the energy bar is full"""
+    side = 70
+    def __init__(self, boss):
+        pygame.sprite.Sprite.__init__(self, self.groups)
+        self.boss = boss
+        self.pos = [0.0,0.0]
+        self.pos[0] = self.boss.pos[0]
+        self.pos[1] = self.boss.pos[1]
+        self.color = self.boss.color
+        self.dx = 0
+        self.dy = 0
+        self.vec = 10
+        self.angle = self.boss.turretAngle
+        self.image = pygame.Surface((Rocket.side, 20))
+        self.image.set_colorkey((0,0,0))
+        pygame.draw.polygon(self.image, (0,255,0), ((Rocket.side/2,0),(Rocket.side/2+20,10),(Rocket.side/2,20))) # middle triangle
+        pygame.draw.polygon(self.image, (0,255,0), ((0,0),(20,10),(0,20))) # back triangle
+        pygame.draw.polygon(self.image, (0,255,0), ((Rocket.side-10, 5), (Rocket.side, 10), (Rocket.side-10,15))) # point
+        pygame.draw.rect(self.image, self.color, (0,5,Rocket.side - 10, 10)) # color rect
+        pygame.draw.rect(self.image, (0,255,0), (0,5,Rocket.side - 10, 10),1) # green outer rect
+        
+        self.image.convert_alpha()
+        self.image0 = self.image.copy()
+        self.rect = self.image.get_rect()
+        self.rect.centerx = round(self.pos[0],0)
+        self.rect.centery = round(self.pos[1],0)
+        self.lifetime = 5.0
+        
+    def update(self, seconds):
+        self.lifetime -= seconds
+        if self.lifetime < 0:
+            self.kill()
+        self.pos[0] += self.dx * seconds
+        self.pos[1] += self.dy * seconds
+        self.rect.centerx = round(self.pos[0],0)
+        self.rect.centery = round(self.pos[1],0)
+        
         
 class Obstacle(pygame.sprite.Sprite):
     """ a rectangular, bulletproof obstacle"""
@@ -173,6 +202,8 @@ class Bar(pygame.sprite.Sprite):
            self.rect = self.image.get_rect()
            self.rect.centerx = round(self.pos[0],0)
            self.rect.centery = round(self.pos[1],0)
+           self.bulletx = Bar.length * (Config.ebulletloss * 1.0 / Config.emax)
+           self.movex = Bar.length * (Config.emoveloss * 1.0 / Config.emax)
            if self.barnumber == 1: # energy reserve:
                self.red = 255
                self.green = 255
@@ -189,9 +220,11 @@ class Bar(pygame.sprite.Sprite):
                energyx = int(percent * Bar.length)
                pygame.draw.rect(self.image, (self.red, self.green, self.blue), (0,0,energyx,Bar.height))
                pygame.draw.rect(self.image, (255,255,255),(0,0,Bar.length, Bar.height),1) # border
-               # white line at minimum energy for bullet
-               bulletx = Bar.length * (Config.ebulletloss * 1.0 / Config.emax)
-               pygame.draw.line(self.image, (10,10,10),(bulletx,0),(bulletx,Bar.height),1) 
+               # dark line at minimum energy for bullet
+               pygame.draw.line(self.image, (10,10,10),(self.bulletx,0),(self.bulletx,Bar.height),1) 
+               # dark line at minimum for movement
+               pygame.draw.line(self.image, (10,10,10),(self.movex,0),(self.movex,Bar.height),1) 
+           
            elif self.barnumber == 2: # plus minus bar
                #print "bar..... ", self.boss.eplus, self.boss.eminus
                self.image.fill((0,0,0)) # fill transparent
@@ -207,6 +240,7 @@ class Bar(pygame.sprite.Sprite):
                pygame.draw.rect( self.image, (255,0,0), (Bar.length / 2 - minusx, 0 , minusx, Bar.height)) # red loss
                pygame.draw.line(self.image, (10,10,10),(Bar.length / 2, 0), (Bar.length/2, Bar.height),1) # black middle line
                pygame.draw.rect(self.image, (255,255,255),(0,0,Bar.length, Bar.height),1) # border
+           
            elif self.barnumber == 3: # pausebar
                percent = min(5,self.boss.pause) * 1.0 / 5 # 5 seconds max pause for bar
                pausex = int(Bar.length * 1.0 * percent)
@@ -518,9 +552,9 @@ class Tank(pygame.sprite.Sprite):
             self.dx = 0
             self.dy = 0
             self.forward = 0 # movement calculator
-            if pressedkeys[self.forwardkey] and self.pause == 0:
+            if pressedkeys[self.forwardkey] and self.pause == 0 and  self.energy > Config.emoveloss:
                 self.forward += 1
-            if pressedkeys[self.backwardkey] and self.pause == 0:
+            if pressedkeys[self.backwardkey] and self.pause == 0 and self.energy > Config.emoveloss:
                 self.forward -= 1
             # if both are pressed togehter, self.forward becomes 0
             if self.forward == 1:
@@ -781,6 +815,18 @@ class Field(pygame.sprite.Sprite):
                 
 #------------ defs ------------------
 
+
+def load_sound(file):
+    if not pygame.mixer: 
+        return Dummysound()
+    file = os.path.join('data', file)
+    try:
+        sound = pygame.mixer.Sound(file)
+        return sound
+    except pygame.error:
+        print 'Warning, unable to load,', file
+    return Dummysound()
+
 def radians_to_degrees(radians):
     return (radians / math.pi) * 180.0
 
@@ -919,7 +965,9 @@ def game():
     bulletgroup = pygame.sprite.Group()
     fieldgroup = pygame.sprite.Group()
     obstaclegroup = pygame.sprite.Group()
+    rocketgroup = pygame.sprite.Group()
     allgroup = pygame.sprite.LayeredUpdates()
+    
     
     Tank._layer = 5
     Bullet._layer = 8
@@ -929,6 +977,7 @@ def game():
     Spark._layer = 2
     Text._layer = 4
     Bar._layer = 2
+    Rocket._layer = 7
  
     #assign default groups to each sprite class
     Tank.groups = tankgroup, allgroup
@@ -939,6 +988,7 @@ def game():
     Text.groups = allgroup
     Obstacle.groups = allgroup, obstaclegroup
     Bar.groups = allgroup
+    Rocket.groups = allgroup, rocketgroup
     
     # ---- create Tanks ------
     #         Tank(pos, turretAngle, tankAngle)
@@ -1008,6 +1058,8 @@ def game():
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     mainloop = False 
+                if event.key == pygame.K_r:
+                    Rocket(player1)
 
         for bull in bulletgroup:  
             crashgroup = pygame.sprite.spritecollide(bull, fieldgroup, False )      #pygame.sprite.collide_circle
