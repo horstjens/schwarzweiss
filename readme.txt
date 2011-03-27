@@ -6,11 +6,16 @@ schwarzweiss is a German word maening "blackwhite". The schwarzweiss game is wri
 
 In the 2-player game "schwarzweiss", each player control a tank (white tank on the left border, black tank on the right border) and can move the tank up / down as well as rotate the tank turret (using keys).
 
-Between the tanks is a big field created out of rectangular tiles, each with a grey color. By shooting over those tiles, each tile will slowly change it's color to eithere black or white, depending who is shooting. 
+Between the tanks is a big field created out of rectangular tiles (fields), each with a grey color. By shooting over those tiles, each tile will slowly change it's color to eithere black or white, depending who is shooting. 
 
 The goal of the game is to switch more then 50% of all tiles to the color of the tank.
 
-To make the game more interesting (and hopefully, a bit tactical), slow-moving balls float over the field, reflecting all shots from the tanks.
+To make the game more interesting (and hopefully, a bit tactical), slow-moving neutral tanks roam over the playfield, reflecting all shots and shooting back.
+
+energy management: 
+  shooting, rotating and moving cost energy.
+  waitng, hitting fields and hitting tanks gains energy.
+
 
 === license ===
 
