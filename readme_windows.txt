@@ -26,7 +26,7 @@ make sure you take python2.6 (and not pyhton2.7). make sure you install pygame c
 If you manage to open a terminal, you must type: 
 C:\Python26\python.exe schwarzweiss.py
 it is probably less complicated to open schwarzweiss.py using IDLE.
-Also the readme file is not displayed correctly if you open it with notepad. Try to open it using a better text editor.
+
 
 Note for Mac users:
 ===================
