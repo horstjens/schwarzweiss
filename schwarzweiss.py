@@ -48,10 +48,10 @@ class Config(object):
     width = 1024 # pixel
     height = 600 # picel
     fps = 100  # max. framerate in frames per second
-    xtiles = 10 # how many fields horizontal
-    ytiles = 10 # how many fields vertical
+    xtiles = random.randint(8,16) # how many fields horizontal
+    ytiles = random.randint(4,12) # how many fields vertical
     #title = "Esc: quit, left player: WASD, right player: Cursor"
-    neutraltanks = 2 # number of neutral tanks
+    neutraltanks = random.randint(1,5) # number of neutral tanks
     tankxpercent = 0.4 # left tank is allowed in the left 40 % of playfield
     maxpause = 1.0 # seconds of immobilisation after turret hit
     #---- tank energy gain and loss (per second) -----
@@ -153,9 +153,11 @@ class Rocket(pygame.sprite.Sprite):
         
 class Obstacle(pygame.sprite.Sprite):
     """ a rectangular, bulletproof obstacle"""
-    def __init__(self, x,y, vertical = True):
+    def __init__(self, x,y, vertical = True, bounce = False):
         pygame.sprite.Sprite.__init__(self, self.groups)
-        if vertical:
+        self.vertical = vertical
+        self.bounce = bounce
+        if self.vertical:
             self.image = pygame.Surface((10,Tank.side))
         else:
             self.image = pygame.Surface((Tank.side, 10))
@@ -167,6 +169,16 @@ class Obstacle(pygame.sprite.Sprite):
         self.image.convert()
         self.rect = self.image.get_rect()
         self.pos = [0,0]
+        self.dx = 0
+        self.dy = 0
+        if self.bounce:
+            if self.vertical:
+                self.dx = 0
+                self.dy = random.choice((-1,1))
+            else:
+                self.dy = 0
+                self.dx = random.choice((-1,1))
+        self.vec = random.randint(25,75)
         self.pos[0] = x
         self.pos[1] = y
         self.rect.centerx = round(self.pos[0],0)
@@ -180,6 +192,26 @@ class Obstacle(pygame.sprite.Sprite):
             self.red = max(200, self.red)
             self.red = min(255, self.red)
         self.image.fill((self.red, self.green, self.blue))
+        if self.bounce:
+            self.pos[0] += self.dx * self.vec * seconds
+            self.pos[1] += self.dy * self.vec * seconds
+            if self.vertical: # bounce up / down
+                if self.pos[1] < int(Tank.side*1.5):
+                    self.pos[1] = int(Tank.side*1.5)
+                    self.dy *= -1
+                elif self.pos[1] > Config.height - int(Tank.side*1.5):
+                    self.pos[1] = Config.height - int(Tank.side*1.5)
+                    self.dy *= -1
+            else: # bounce left / right
+                if self.pos[0] < int(Tank.side*1.5):
+                    self.pos[0] = int(Tank.side*1.5)
+                    self.dx *= -1
+                elif self.pos[0] > Config.width - int(Tank.side * 1.5):
+                    self.pos[0] = Config.width - int(Tank.side * 1.5)
+                    self.dx *= -1
+            self.rect.centerx = round(self.pos[0],0)
+            self.rect.centery = round(self.pos[1],0)
+                
         
 class Bar(pygame.sprite.Sprite):
        """a bar to indicate energy loss or gain
@@ -1000,7 +1032,10 @@ def game():
     Obstacle(Config.width - Tank.side/2, Tank.side, False) # upper right, horizontal
     #Obstacle(Config.width / 2, Tank.side/2, True) # upper border, vertical
     Obstacle(Config.width / 2, Config.height - Tank.side/2, True) #lower border, vertical
-    
+    # sliding obstacles
+    Obstacle(Config.width / 2 - 100, Config.height - Tank.side , False, True) # horizontal sliding
+    Obstacle(Config.width / 2 + 100, Config.height - Tank.side , False, True)
+    Obstacle(Config.width / 2, Config.height / 2, True, True) # vertical sliding
     #---------- fill grid with Field sprites ------------
     # how much space x in playfield ?
     lengthx = Config.width - 2* Tank.side
