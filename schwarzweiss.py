@@ -51,7 +51,7 @@ class Config(object):
     xtiles = random.randint(8,16) # how many fields horizontal
     ytiles = random.randint(4,12) # how many fields vertical
     #title = "Esc: quit, left player: WASD, right player: Cursor"
-    neutraltanks = random.randint(1,5) # number of neutral tanks
+    neutraltanks = random.randint(1,3) # number of neutral tanks
     tankxpercent = 0.4 # left tank is allowed in the left 40 % of playfield
     maxpause = 1.0 # seconds of immobilisation after turret hit
     tracktolerance = 15 # tolerance (pixel) for turning tank in corner
