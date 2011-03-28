@@ -54,9 +54,12 @@ class Config(object):
     neutraltanks = random.randint(1,5) # number of neutral tanks
     tankxpercent = 0.4 # left tank is allowed in the left 40 % of playfield
     maxpause = 1.0 # seconds of immobilisation after turret hit
-    #---- tank energy gain and loss (per second) -----
     tracktolerance = 15 # tolerance (pixel) for turning tank in corner
     barmax = 10.0 # max value for energy gain/loss bar
+    bullethitpoints = 2 
+    rockethitpoints = 10
+    tracerdamage = 1
+    #--------- energy --------
     ebasegain = 45 # energy gain per second
     ehitgain = 1
     eturrethitgain = 25 # once
@@ -72,7 +75,8 @@ class Config(object):
     emax = 1000
     ebulletmin = 500
     etracermin = 50
-    #------sounds -----
+    erocketlaunch = 400
+
 
 
 
@@ -115,6 +119,7 @@ class Spark(pygame.sprite.Sprite):
 class Rocket(pygame.sprite.Sprite):
     """a rocket that fires only when the energy bar is full"""
     side = 70
+    mass = 100
     def __init__(self, boss):
         pygame.sprite.Sprite.__init__(self, self.groups)
         self.boss = boss
@@ -122,12 +127,21 @@ class Rocket(pygame.sprite.Sprite):
         self.pos[0] = self.boss.pos[0]
         self.pos[1] = self.boss.pos[1]
         self.color = self.boss.color
+        self.mass = Rocket.mass
+        self.static = False
         self.dx = 0
         self.dy = 0
-        self.vec = 10
+        if self.boss.number == 0:
+            self.target = 1
+            self.angle = 0
+        else:
+            self.target = 0
+            self.angle = 180
+        self.vel = 100 # velocity
         self.angle = self.boss.turretAngle
         self.image = pygame.Surface((Rocket.side, 20))
-        self.image.set_colorkey((0,0,0))
+        self.image.set_colorkey((5,5,5))
+        self.image.fill((5,5,5))
         pygame.draw.polygon(self.image, (0,255,0), ((Rocket.side/2,0),(Rocket.side/2+20,10),(Rocket.side/2,20))) # middle triangle
         pygame.draw.polygon(self.image, (0,255,0), ((0,0),(20,10),(0,20))) # back triangle
         pygame.draw.polygon(self.image, (0,255,0), ((Rocket.side-10, 5), (Rocket.side, 10), (Rocket.side-10,15))) # point
@@ -139,12 +153,34 @@ class Rocket(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.centerx = round(self.pos[0],0)
         self.rect.centery = round(self.pos[1],0)
-        self.lifetime = 5.0
+        self.lifetime = 10.0
+        self.hitpoints = Config.rockethitpoints
+        
+    def rotate_toward_moving(self):
+        pass # the rocket is guided by itself and not by elastic_collision
         
     def update(self, seconds):
         self.lifetime -= seconds
         if self.lifetime < 0:
             self.kill()
+        if self.hitpoints <= 0:
+            self.kill()
+        # aim at player
+        deltax = Tank.book[self.target].pos[0] - self.pos[0]
+        deltay = Tank.book[self.target].pos[1] - self.pos[1]
+        angle =   math.atan2(-deltax, -deltay)/math.pi*180.0            
+        diff = (angle - self.angle - 90) %360 #reset at 360
+        if diff < 180:
+            self.angle -= 1
+        elif diff > 180:
+            self.angle += 1
+        
+        self.image = pygame.transform.rotate(self.image0, self.angle)
+        self.rect = self.image.get_rect()
+        self.dx = math.cos(degrees_to_radians(self.angle)) * self.vel
+        self.dy = math.sin(degrees_to_radians(-self.angle)) * self.vel
+        
+        
         self.pos[0] += self.dx * seconds
         self.pos[1] += self.dy * seconds
         self.rect.centerx = round(self.pos[0],0)
@@ -317,6 +353,7 @@ class Bullet(pygame.sprite.Sprite):
         self.radius = Bullet.side / 2
         self.angle = 0
         self.lifetime = 0.0
+        self.hitpoints = Config.bullethitpoints
         self.color = self.boss.color
         self.calculate_heading() # !!!!!!!!!!!!!!!!!!!
         self.book = {}
@@ -368,6 +405,8 @@ class Bullet(pygame.sprite.Sprite):
     def update(self, seconds=0.0):
         if self.value <= 0:
             self.kill() 
+        if self.hitpoints <= 0:
+            self.kill()
         self.lifetime += seconds
         if self.lifetime > self.maxlifetime:
             self.kill()
@@ -406,11 +445,12 @@ class Tracer(Bullet):
         Bullet.__init__(self,boss ) # this line is important 
         self.value = 16
         self.maxlifetime = Tracer.maxlifetime
+        self.mass = Tracer.mass
         
     def calculate_heading(self):
         """overwriting the method because there are some differences 
            between a tracer and a main gun bullet"""
-        self.radius = Tracer.side # for collision detection
+        self.radius = Tracer.side / 2 # for collision detection
         self.angle = 0
         self.angle += self.boss.tankAngle
         if self.turret:
@@ -600,6 +640,8 @@ class Tank(pygame.sprite.Sprite):
             # ----- energy sum ---
             self.energy += self.eplus
             self.energy -= self.eminus
+            # --- automatic rocket launch if 100% energy ---
+            
             self.eplussum = self.eplus
             self.eminussum = self.eminus
             self.eplus = 0
@@ -610,6 +652,10 @@ class Tank(pygame.sprite.Sprite):
                 self.energy = 0
             elif self.energy > Config.emax:
                 self.energy = Config.emax
+            # --- automatic rocket launch if 100% energy ---
+            if self.energy == Config.emax:
+                self.energy -= Config.erocketlaunch
+                Rocket(self)
             # ------------- check border collision ---------------------
             self.pos[0] += self.dx * seconds
             self.pos[1] += self.dy * seconds
@@ -998,6 +1044,7 @@ def game():
     fieldgroup = pygame.sprite.Group()
     obstaclegroup = pygame.sprite.Group()
     rocketgroup = pygame.sprite.Group()
+    tracergroup = pygame.sprite.Group()
     allgroup = pygame.sprite.LayeredUpdates()
     
     
@@ -1016,6 +1063,7 @@ def game():
     Field.groups = allgroup, fieldgroup
     Turret.groups = allgroup
     Spark.groups = allgroup
+    Tracer.groups = allgroup, tracergroup
     Bullet.groups = bulletgroup, allgroup
     Text.groups = allgroup
     Obstacle.groups = allgroup, obstaclegroup
@@ -1093,8 +1141,26 @@ def game():
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     mainloop = False 
-                if event.key == pygame.K_r:
-                    Rocket(player1)
+                #if event.key == pygame.K_r:
+                #    Rocket(player1)
+                #if event.key == pygame.K_t:
+                #    Rocket(player2)
+
+        for tracy in tracergroup: # tracer shot bullet down ?
+            crashgroup = pygame.sprite.spritecollide(tracy, bulletgroup, False, pygame.sprite.collide_circle) 
+            for hitbullet in crashgroup:
+                if hitbullet.boss.number != tracy.boss.number:
+                    hitbullet.hitpoints -= Config.tracerdamage
+                    elastic_collision(hitbullet, tracy)
+                    tracy.kill()
+            crashgroup = pygame.sprite.spritecollide(tracy, rocketgroup, False)
+            for hitrocket in crashgroup:
+                if hitrocket.boss.number != tracy.boss.number:
+                    hitrocket.hitpoints -= Config.tracerdamage
+                    #elastic_collision(hitrocket, tracy)
+                    tracy.kill()
+               
+                    
 
         for bull in bulletgroup:  
             crashgroup = pygame.sprite.spritecollide(bull, fieldgroup, False )      #pygame.sprite.collide_circle
@@ -1133,6 +1199,20 @@ def game():
                     Config.explo3.play()
                     tank.eminus += Config.eturrethitloss
                 elastic_collision(bouncebullet, tank)
+        
+        for rocket in rocketgroup:
+            crashgroup = pygame.sprite.spritecollide(rocket, tankgroup, False, pygame.sprite.collide_circle)
+            for crashtank in crashgroup:
+                if crashtank.number != rocket.boss.number and crashtank.number <2:
+                    if rocket.boss.number == 0: # player1 has scored a hit
+                        Config.explo2.play()
+                        player1.energy += player2.energy
+                        player2.energy = 0
+                    else: # player2 has scored a hit
+                        Config.explo1.play()
+                        player2.energy += player1.energy
+                        player1.energy = 0
+                    rocket.kill()
             
         for obst in obstaclegroup: # kill bullets in obstacles
             crashgroup = pygame.sprite.spritecollide(obst, bulletgroup, False) 

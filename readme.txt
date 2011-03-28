@@ -52,6 +52,9 @@ energy management:
   shooting, rotating and moving cost energy.
   waitng, hitting fields and hitting tanks gains energy.
 
+Please see newest instructions, bug notices etc at the game hompepage:
+http://thepythongamebook.com/en:resources:games:schwarzweiss
+
 === customizing ===
 
 you can customzie the game by changing the values in the class Config, such as number of tiles, number of neutral tanks etc.
