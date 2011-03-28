@@ -75,7 +75,7 @@ class Config(object):
     emax = 1000
     ebulletmin = 500
     etracermin = 50
-    erocketlaunch = 400
+    erocketlaunch = 700
 
 
 
