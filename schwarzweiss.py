@@ -153,8 +153,9 @@ class Rocket(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.centerx = round(self.pos[0],0)
         self.rect.centery = round(self.pos[1],0)
-        self.lifetime = 10.0
+        self.lifetime = 15.0
         self.hitpoints = Config.rockethitpoints
+        self.phase = 0 # first pahse fly to nord middle border, second phase aim at enemy player
         
     def rotate_toward_moving(self):
         pass # the rocket is guided by itself and not by elastic_collision
@@ -163,11 +164,16 @@ class Rocket(pygame.sprite.Sprite):
         self.lifetime -= seconds
         if self.lifetime < 0:
             self.kill()
+        if self.pos[1] <= Tank.side:
+            self.phase = 1 # aim at enemy player if reaching north border
         if self.hitpoints <= 0:
             self.kill()
-        # aim at player
-        deltax = Tank.book[self.target].pos[0] - self.pos[0]
-        deltay = Tank.book[self.target].pos[1] - self.pos[1]
+        if self.phase == 0: # aim at middle north border
+            deltax = Config.width / 2 - self.pos[0]
+            deltay = Tank.side - self.pos[1]
+        else:  # aim at player
+            deltax = Tank.book[self.target].pos[0] - self.pos[0]
+            deltay = Tank.book[self.target].pos[1] - self.pos[1]
         angle =   math.atan2(-deltax, -deltay)/math.pi*180.0            
         diff = (angle - self.angle - 90) %360 #reset at 360
         if diff < 180:
@@ -439,7 +445,7 @@ class Tracer(Bullet):
     vel = 200 # velocity
     mass = 10
     color = (200,0,100)
-    maxlifetime = 1.0 # seconds
+    maxlifetime = 1.5 # seconds
     def __init__(self, boss, turret=False):
         self.turret = turret
         Bullet.__init__(self,boss ) # this line is important 
@@ -576,6 +582,8 @@ class Tank(pygame.sprite.Sprite):
                 self.pause = 0
 
         if self.number > 1: # +-------- neutral tanks ------------
+             #if self.pause >= Config.maxpause / 2:
+                # do not rotate turret if hit by shell
              self.aim_at_player(self.targetplayer)
              if self.pause > 0:
                  self.forward = 0
@@ -766,9 +774,11 @@ class Tank(pygame.sprite.Sprite):
             else:
                 self.targetplayer = 0
         elif diff > 180:
-            self.turndirection = 1
+              #if self.pause <= Config.maxpause / 2:
+                    self.turndirection = 1
         else:
-            self.turndirection = -1
+              #if self.pause <= Config.maxpause / 2:
+                    self.turndirection = -1
         return diff
 
 class Turret(pygame.sprite.Sprite):
@@ -1157,6 +1167,11 @@ def game():
             for hitrocket in crashgroup:
                 if hitrocket.boss.number != tracy.boss.number:
                     hitrocket.hitpoints -= Config.tracerdamage
+                    if hitrocket.hitpoints < 1: # energy win for shooting down rocket
+                        Config.explo3.play()
+                        tracy.boss.energy += Config.erocketlaunch * 0.75
+                        for r in range(10): # 360° arc of sparks 
+                            Spark(hitrocket.pos, hitrocket.boss.color, r * (2 * math.pi) / 10.0 , 0.7)
                     #elastic_collision(hitrocket, tracy)
                     tracy.kill()
                
