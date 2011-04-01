@@ -59,6 +59,8 @@ class Config(object):
     bullethitpoints = 2 
     rockethitpoints = 10
     tracerdamage = 1
+    bulletconvert = 10 # for how many colorpoints a field is changed when a bullet is flying over it
+    tracerconvert = 1  # for how many colorpoints a field is changed when a tracer is flying over it
     #--------- energy --------
     ebasegain = 45 # energy gain per second
     ehitgain = 1
@@ -424,14 +426,16 @@ class Bullet(pygame.sprite.Sprite):
             self.kill()
         elif self.pos[0] > Config.width:
             self.kill()
-        # bounce upper or lower border
-        
-        if self.pos[1] < 0 or self.pos[1] > Config.height:
+        # bounce only from  upper  border
+        #if self.pos[1] < 0 or self.pos[1] > Config.height:
+        if  self.pos[1] < 0:
             #print self.angle
             self.pos[1] = max(0, self.pos[1])
             self.pos[1] = min(Config.height, self.pos[1])
             self.dy *= -1
             self.rotate_toward_moving()            
+        elif self.pos[1] > Config.height:
+            self.kill()
         #------- move -------
         self.rect.centerx = round(self.pos[0],0)
         self.rect.centery = round(self.pos[1],0)
@@ -1051,6 +1055,7 @@ def game():
     
     tankgroup = pygame.sprite.Group()
     bulletgroup = pygame.sprite.Group()
+    convertgroup = pygame.sprite.Group() # Tracer and bullets
     fieldgroup = pygame.sprite.Group()
     obstaclegroup = pygame.sprite.Group()
     rocketgroup = pygame.sprite.Group()
@@ -1060,21 +1065,21 @@ def game():
     
     Tank._layer = 5
     Bullet._layer = 8
-    Turret._layer = 6
+    Turret._layer = 7
     Field._layer = 2
-    Obstacle._layer = 3
+    Obstacle._layer = 6
     Spark._layer = 2
     Text._layer = 4
     Bar._layer = 2
-    Rocket._layer = 7
+    Rocket._layer = 9
  
     #assign default groups to each sprite class
     Tank.groups = tankgroup, allgroup
     Field.groups = allgroup, fieldgroup
     Turret.groups = allgroup
     Spark.groups = allgroup
-    Tracer.groups = allgroup, tracergroup
-    Bullet.groups = bulletgroup, allgroup
+    Tracer.groups = allgroup, tracergroup, convertgroup
+    Bullet.groups = bulletgroup, allgroup, convertgroup
     Text.groups = allgroup
     Obstacle.groups = allgroup, obstaclegroup
     Bar.groups = allgroup
@@ -1090,9 +1095,12 @@ def game():
     Obstacle(Config.width - Tank.side/2, Tank.side, False) # upper right, horizontal
     #Obstacle(Config.width / 2, Tank.side/2, True) # upper border, vertical
     Obstacle(Config.width / 2, Config.height - Tank.side/2, True) #lower border, vertical
+    #Obstacle(Config.width/ 2 , Config.height - Tank.side, False) # lower border, center, horizontal
+    Obstacle(Config.width/ 2 - Tank.side/2, Config.height - Tank.side, False) # lower border, left of center, horizontal
+    Obstacle(Config.width/ 2 + Tank.side/2, Config.height - Tank.side, False) # lower border, left of center, horizontal
     # sliding obstacles
-    Obstacle(Config.width / 2 - 100, Config.height - Tank.side , False, True) # horizontal sliding
-    Obstacle(Config.width / 2 + 100, Config.height - Tank.side , False, True)
+    #Obstacle(Config.width / 2 - 100, Config.height - Tank.side , False, True) # horizontal sliding
+    #Obstacle(Config.width / 2 + 100, Config.height - Tank.side , False, True)
     Obstacle(Config.width / 2, Config.height / 2, True, True) # vertical sliding
     #---------- fill grid with Field sprites ------------
     # how much space x in playfield ?
@@ -1174,19 +1182,27 @@ def game():
                             Spark(hitrocket.pos, hitrocket.boss.color, r * (2 * math.pi) / 10.0 , 0.7)
                     #elastic_collision(hitrocket, tracy)
                     tracy.kill()
+
                
                     
 
-        for bull in bulletgroup:  
+        for bull in convertgroup:  
             crashgroup = pygame.sprite.spritecollide(bull, fieldgroup, False )      #pygame.sprite.collide_circle
             for crashfield in crashgroup:
                 if not bull.book.has_key(crashfield.number):
+                    if getclassname(bull) == "Bullet":
+                        convert_value = Config.bulletconvert
+                    elif getclassname(bull) == "Tracer":
+                        convert_value = Config.tracerconvert
+                    else:
+                        convert_value = 0
+                        print "error, unknow bullet"
                     #if bull.boss.border == "left":
                     if bull.boss.number == 0: # left player
-                        crashfield.changevalue(4)
+                        crashfield.changevalue(convert_value)
                     #elif bull.boss.border == "right":
                     elif bull.boss.number ==1: # right player
-                        crashfield.changevalue(-4)
+                        crashfield.changevalue(-1 * convert_value)
                     bull.value -= 4
                     bull.book[crashfield.number] = True
                     #Spark(bull.pos, crashfield.value)
@@ -1230,7 +1246,7 @@ def game():
                     rocket.kill()
             
         for obst in obstaclegroup: # kill bullets in obstacles
-            crashgroup = pygame.sprite.spritecollide(obst, bulletgroup, False) 
+            crashgroup = pygame.sprite.spritecollide(obst, convertgroup, False) 
             for slurpbullet in crashgroup:
                 if slurpbullet.boss.number < 2: # only slurp for player bullets
                     Config.slurp.play()
