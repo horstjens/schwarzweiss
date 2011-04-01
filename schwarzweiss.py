@@ -1044,6 +1044,7 @@ def game():
     Config.schuss2 = load_sound("schuss2.ogg")
     Config.schuss3 = load_sound("schuss3.ogg")
     Config.gameover = load_sound("gameover.ogg")
+    Config.vampir1 = load_sound("vampir1.ogg")
 
 
 
@@ -1099,7 +1100,7 @@ def game():
     Obstacle(Config.width/ 2 - Tank.side/2, Config.height - Tank.side, False) # lower border, left of center, horizontal
     Obstacle(Config.width/ 2 + Tank.side/2, Config.height - Tank.side, False) # lower border, left of center, horizontal
     # sliding obstacles
-    #Obstacle(Config.width / 2 - 100, Config.height - Tank.side , False, True) # horizontal sliding
+    Obstacle(Config.width / 2 , Config.height - Tank.side , False, True) # horizontal sliding
     #Obstacle(Config.width / 2 + 100, Config.height - Tank.side , False, True)
     Obstacle(Config.width / 2, Config.height / 2, True, True) # vertical sliding
     #---------- fill grid with Field sprites ------------
@@ -1236,11 +1237,11 @@ def game():
             for crashtank in crashgroup:
                 if crashtank.number != rocket.boss.number and crashtank.number <2:
                     if rocket.boss.number == 0: # player1 has scored a hit
-                        Config.explo2.play()
+                        Config.vampir1.play()
                         player1.energy += player2.energy
                         player2.energy = 0
                     else: # player2 has scored a hit
-                        Config.explo1.play()
+                        Config.vampir1.play() # need to add another vampir sound
                         player2.energy += player1.energy
                         player1.energy = 0
                     rocket.kill()
