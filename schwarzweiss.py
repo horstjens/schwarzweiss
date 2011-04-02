@@ -1122,7 +1122,7 @@ def game():
     status1 = Text((Config.width/2, 18), "SchwarzWeiss", 36 )
     score = Text((Config.width/2, 40),"%i (white player) vs. %i (black player) " % (0,0), 30)
     lefttext = Text((Config.width/4,10),"press w,a,s,d + LSHIFT", 24)
-    righttext = Text((Config.width - 200,10),"press cursor + RCTRL", 24)
+    righttext = Text((Config.width - 250,10),"press cursor + RCTRL", 24)
     el0 = Text((45,10),"Energy",24)  #-------------- left player
     el1 = Text((45,30),"reserve:",24)
     ebl1 = Bar((Config.width/4,30),player1,1)  # reserve bar. pos, boss, barnumber
