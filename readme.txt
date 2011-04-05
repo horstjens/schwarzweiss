@@ -12,7 +12,7 @@ make sure you have the file schwarzweiss.py in your folder and in this folder th
 
 start the game by typing
 
-python schwarzweiss.py 
+python schwarzweiss_start.py 
 
 or by launching it with another mehtod (double-clicking etc.)
 
@@ -26,8 +26,8 @@ Note for Windows users:
 =======================
 make sure you take python2.6 (and not pyhton2.7). make sure you install pygame correctly (inside c:\Pyhton26).
 If you manage to open a terminal, you must type: 
-C:\Python26\python.exe schwarzweiss.py
-it is probably less complicated to open schwarzweiss.py using IDLE.
+C:\Python26\python.exe schwarzweiss_start.py
+it is probably less complicated to open schwarzweiss_start.py with your python editor, or by double-clicking.
 Also the readme file is not displayed correctly if you open it with notepad. Try to open it using a better text editor.
 
 Note for Mac users:
@@ -64,11 +64,18 @@ The class Config is on of the first classes in the file schwarzweiss.py
 
 This game is GPL licensed and thus free to copy, distribute and modify. You can do whatever you want with it, as long as the game and the derived work remain free.
 
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+the ezmenu from pymike is licensed under lgpl
+
 === author ===
 
 Horst JENS
 horstjens@spielend-programmieren.at
 http://www.spielend-programmieren.at
+
+Ezmenu form Pymike (http://pymike.aftermatheffect.com/home/)
 
 === download ===
 you should find the latest information and download links at this site:
