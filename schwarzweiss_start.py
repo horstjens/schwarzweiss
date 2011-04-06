@@ -200,7 +200,7 @@ def main():
            elif mousey > 170 and mousey < 274 and mousex < 145:
                webbrowser.open_new_tab("http://thepythongamebook.com")
                cooldown = 1
-           elif mousey > 284 and mousey < 435 and mousex < 145:
+           elif mousey > 284 and mousey < 457 and mousex < 145:
                webbrowser.open_new_tab("http://flattr.com/thing/163126/schwarzweiss-game")
                      
         #Draw the scene!
