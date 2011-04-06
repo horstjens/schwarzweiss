@@ -1092,6 +1092,7 @@ def game(greentanks=3, fieldsx=16, fieldsy=8, x=1024,y=800):
     
     # ---- create Tanks ------
     #         Tank(pos, turretAngle, tankAngle)
+    # !! if you out-comment the next 2 lines, try starting the game twice via the menu...second thime you will see some strange effect
     Tank.book = {}
     Tank.number = 0
     player1 = Tank((Tank.side/2, Config.height/2 ), 0, 90)#
