@@ -2,6 +2,9 @@ schwarzweiss readme file
 
 schwarzweiss is a German word maening "blackwhite". The schwarzweiss game is written in python (2.6) and pygame (1.9.1) and tested on Linux (Ubuntu 10.10) and Windows XP.
 
+=== game homepage ===
+http://thepythongamebook.com/en:resources:games:schwarzweiss
+
 === installation ===
 
 install python2.6 from http://www.python.org for your Operation System. You can try out newer version of python at your own risk.
@@ -80,6 +83,21 @@ Ezmenu form Pymike (http://pymike.aftermatheffect.com/home/)
 === download ===
 you should find the latest information and download links at this site:
 http://thepythongamebook.com/en:resources:games:schwarzweiss
+
+=== support ===
+I would be very pleased to hear your opinion about this game.
+
+email: horstjen@gmail.com
+
+You can also post your opinion about the game in ThePythonGameBook's facebook page:
+
+https://www.facebook.com/ThePythonGameBook
+
+If you want to send money, this game has it's own flattr button:
+
+https://flattr.com/thing/163126/schwarzweiss-game
+
+There is also a paypal button at the game's homepage.
 
 ==== note about reddit game jam ====
 the schwarzweiss game was first developed for another gamejam in Vienna's Metalab (11/2010). Since 1-2011 the game was public on my site 
