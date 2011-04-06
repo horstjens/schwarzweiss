@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+# -*- coding: utf-8 -*-
 # this game menu will start the schwarzweiss game. please make sure an Arial font is installed
 
 #       
@@ -38,6 +39,7 @@
 #import sys
 import pygame
 import os
+import webbrowser
 from data import ezmenu
 from data import schwarzweiss
 
@@ -61,7 +63,7 @@ def makemenu(pos=0):
         ["# of neutral (green) tanks: %i" % Config.greentanks, lambda: option2(Config.greentanks)],
         ["# of fields (x-axis): %i " % Config.fieldsx , lambda: option3(Config.fieldsx)],
         ["# of fields (y-axis): %i " % Config.fieldsy , lambda: option4(Config.fieldsy)],
-        ["screen resolution: %i,%i" % (Config.resolution[0], Config.resolution[1]), lambda: option5(Config.resolution)],
+        ["screen resolution: %i x %i" % (Config.resolution[0], Config.resolution[1]), lambda: option5(Config.resolution)],
         ["Quit Game", option6])
     
     Config.menu.center_at(320, 240)
@@ -161,11 +163,19 @@ def main():
     background = pygame.image.load(os.path.join("data", "menupic.png"))
     screen.blit(background, (0,0))
     makemenu(0)
+    FPS = 30
+    clock = pygame.time.Clock()
+    cooldown = 0
     while Config.menuloop:
         pygame.display.set_caption("last game result: %s" % Config.result)
         #Get all the events called
+        seconds = clock.tick(FPS) / 1000.0 # do not go faster than this frame rate
+        if cooldown < 0:
+            cooldown = 0
+        if cooldown > 0:
+            cooldown -= seconds
         events = pygame.event.get()
-
+        
         #...and update the menu which needs access to those events
         Config.menu.update(events)
 
@@ -179,6 +189,19 @@ def main():
                 #print "keypress"
                 if e.key == pygame.K_ESCAPE:
                      Config.menuloop = False
+        
+        # mouse to open url's
+        if pygame.mouse.get_pressed()[0] == True and cooldown ==0: # left mouse button was pressed
+           mousex = pygame.mouse.get_pos()[0] 
+           mousey = pygame.mouse.get_pos()[1] 
+           if mousey > 95 and mousey < 116: # open game homepage
+               webbrowser.open_new_tab("http://thepythongamebook.com/en:resources:games:schwarzweiss")
+               cooldown = 1
+           elif mousey > 170 and mousey < 274 and mousex < 145:
+               webbrowser.open_new_tab("http://thepythongamebook.com")
+               cooldown = 1
+           elif mousey > 284 and mousey < 435 and mousex < 145:
+               webbrowser.open_new_tab("http://flattr.com/thing/163126/schwarzweiss-game")
                      
         #Draw the scene!
         #screen.fill((0, 0, 255))
