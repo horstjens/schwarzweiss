@@ -50,15 +50,15 @@ To make the game more interesting (and hopefully, a bit tactical), slow-moving n
 
 energy management: 
   shooting, rotating and moving cost energy.
-  waitng, hitting fields and hitting tanks gains energy.
+  waiting, hitting fields and hitting tanks gains energy.
 
 Please see newest instructions, bug notices etc at the game hompepage:
 http://thepythongamebook.com/en:resources:games:schwarzweiss
 
 === customizing ===
 
-you can customzie the game by changing the values in the class Config, such as number of tiles, number of neutral tanks etc.
-The class Config is on of the first classes in the file schwarzweiss.py
+you can customzie the game by changing the values in the game menu or by changing values inside the class Config of the file schwarzweiss.py (inside the folder data). 
+
 
 === license ===
 
