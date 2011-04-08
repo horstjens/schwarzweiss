@@ -155,24 +155,32 @@ class Rocket(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.centerx = round(self.pos[0],0)
         self.rect.centery = round(self.pos[1],0)
-        self.lifetime = 15.0
+        #self.lifetime = 15.0
         self.hitpoints = Config.rockethitpoints
         self.phase = 0 # first pahse fly to nord middle border, second phase aim at enemy player
+        self.middletarget = Config.height / 2.0 * random.random() # aim at a point (y) between the top border and the middle of the screen
         
     def rotate_toward_moving(self):
         pass # the rocket is guided by itself and not by elastic_collision
         
     def update(self, seconds):
-        self.lifetime -= seconds
-        if self.lifetime < 0:
-            self.kill()
-        if self.pos[1] <= Tank.side:
-            self.phase = 1 # aim at enemy player if reaching north border
+        #self.lifetime -= seconds
+        #if self.lifetime < 0:
+        #    self.kill()
+        #if self.pos[1] <= Tank.side:
+        #    self.phase = 1 # aim at enemy player if reaching north border
+        if self.boss.number == 0: # left player, rocket flys from west to east
+           if self.pos[0] >= Config.width / 2:
+               self.phase = 1
+        elif self.boss.number == 1:
+            if self.pos[0] <= Config.width /2:
+               self.phase = 1
         if self.hitpoints <= 0:
             self.kill()
         if self.phase == 0: # aim at middle north border
             deltax = Config.width / 2 - self.pos[0]
-            deltay = Tank.side - self.pos[1]
+            #deltay = Tank.side - self.pos[1]
+            deltay = self.middletarget - self.pos[1]
         else:  # aim at player
             deltax = Tank.book[self.target].pos[0] - self.pos[0]
             deltay = Tank.book[self.target].pos[1] - self.pos[1]
