@@ -60,7 +60,8 @@ class Config(object):
     rockethitpoints = 10
     tracerdamage = 1
     bulletconvert = 10 # for how many colorpoints a field is changed when a bullet is flying over it
-    tracerconvert = 1  # for how many colorpoints a field is changed when a tracer is flying over it
+    tracerconvert = 2  # for how many colorpoints a field is changed when a tracer is flying over it
+    sporeconvert = 5  # for how many colorpoints a field is changed when a spore is flying over it
     #--------- energy --------
     ebasegain = 45 # energy gain per second
     ehitgain = 1
@@ -540,7 +541,52 @@ class Tracer(Bullet):
             self.pos[0] +=  math.cos(degrees_to_radians(30+self.boss.tankAngle)) * (Tank.side/2)
             self.pos[1] +=  math.sin(degrees_to_radians(-30-self.boss.tankAngle)) * (Tank.side/2)
 
-
+class Spore(pygame.sprite.Sprite):
+    """a spore that spawns from a converted (crossed) field
+       into a random direction and convert other non-crossed fields
+       toward the spore's color"""
+    def __init__(self, boss):
+        pygame.sprite.Sprite.__init__(self, self.groups)
+        self.boss = boss
+        self.book = {} # important to check converted fields
+        self.pos = [0.0,0.0]
+        self.pos[0] = self.boss.rect.centerx
+        self.pos[1] = self.boss.rect.centery
+        self.radius = int(min(Field.sidex, Field.sidey) / 2)
+        self.image = pygame.Surface((2*self.radius, 2*self.radius))
+        self.image.fill((0,255,0)) # fill green
+        self.image.set_colorkey((0,255,0)) # green is transparent
+        if self.boss.black:
+            self.color = 0
+        else: 
+            self.color = 255
+        if self.radius < 5:
+            self.radius = 5
+        pygame.draw.circle(self.image, (0,0,255), (self.radius, self.radius), self.radius -4) #big blue outer circle
+        pygame.draw.line(self.image, (0, 0, 255), (0,0),(self.radius * 2, self.radius * 2), 6) # thick X
+        pygame.draw.line(self.image, (self.color, self.color, self.color), (0,0),(self.radius * 2, self.radius * 2), 5) # thick X
+        pygame.draw.line(self.image, (0, 0, 255), (0,self.radius * 2 ),(self.radius * 2,0), 6) # thick X
+        pygame.draw.line(self.image, (self.color, self.color, self.color), (0,self.radius * 2 ),(self.radius * 2,0), 6) # thick X
+        self.rect = self.image.get_rect()
+        self.rect.centerx = self.pos[0]
+        self.rect.centery = self.pos[1]
+        self.angle = random.randint(0,360)
+        self.vel = 50
+        self.dx = math.cos(degrees_to_radians(self.angle)) * self.vel
+        self.dy = math.sin(degrees_to_radians(-self.angle)) * self.vel
+        self.lifetime = 0
+        self.maxlifetime = 1
+        self.value = 0
+        self.update(0) # need to pass seconds to update
+        
+    def update(self, seconds):
+        self.lifetime += seconds
+        if self.lifetime > self.maxlifetime:
+            self.kill()
+        self.pos[0] += self.dx * seconds
+        self.pos[1] += self.dy * seconds
+        self.rect.centerx = round(self.pos[0],0)
+        self.rect.centery = round(self.pos[1],0)
             
 class Tank(pygame.sprite.Sprite):
     """ A Tank, controlled by the Player with Keyboard commands.
@@ -911,8 +957,19 @@ class Field(pygame.sprite.Sprite):
         self.rect.centery = Field.cornery + Field.sidey / 2 + self.posy * Field.sidey
         self.black = False
         self.white = False
+        self.lifetime = 0
+        self.sporecount = 0
+        
+        
     
     def update(self, seconds):
+        self.lifetime += seconds
+        if self.black or self.white:
+            if self.lifetime > 5 + self.sporecount* 5:
+                Spore(self) # spawn a Spore
+                self.sporecount += 1
+        
+        
         if self.value != self.oldvalue:
             self.image.fill((self.value, self.value, self.value))
             #print "changing  field" , str(self.number)
@@ -1123,11 +1180,12 @@ def game(greentanks=3, fieldsx=16, fieldsy=8, x=1024,y=800):
     Turret._layer = 7
     Field._layer = 2
     Obstacle._layer = 6
-    Spark._layer = 2
+    Spark._layer = 3
     Text._layer = 4
     Bar._layer = 2
     Rocket._layer = 9
     Explosion._layer = 6
+    Spore._layer = 3
  
     #assign default groups to each sprite class
     Tank.groups = tankgroup, allgroup
@@ -1141,6 +1199,7 @@ def game(greentanks=3, fieldsx=16, fieldsy=8, x=1024,y=800):
     Bar.groups = allgroup
     Rocket.groups = allgroup, rocketgroup
     Explosion.groups = allgroup
+    Spore.groups = allgroup, convertgroup
     
     # ---- create Tanks ------
     #         Tank(pos, turretAngle, tankAngle)
@@ -1255,14 +1314,18 @@ def game(greentanks=3, fieldsx=16, fieldsy=8, x=1024,y=800):
                     elif getclassname(bull) == "Tracer":
                         convert_value = Config.tracerconvert
                     else:
-                        convert_value = 0
-                        print "error, unknow bullet"
-                    #if bull.boss.border == "left":
-                    if bull.boss.number == 0: # left player
-                        crashfield.changevalue(convert_value)
-                    #elif bull.boss.border == "right":
-                    elif bull.boss.number ==1: # right player
-                        crashfield.changevalue(-1 * convert_value)
+                        convert_value = Config.sporeconvert # spore
+                    if getclassname(bull) == "Bullet" or getclassname(bull) == "Tracer":
+                        if bull.boss.number == 0: # left player
+                            crashfield.changevalue(convert_value)
+                        #elif bull.boss.border == "right":
+                        elif bull.boss.number ==1: # right player
+                            crashfield.changevalue(-1 * convert_value)
+                    elif getclassname(bull) == "Spore":
+                        if bull.color == 255:
+                            crashfield.changevalue(convert_value)
+                        elif bull.color == 0:
+                            crashfield.changevalue(-1 * convert_value)
                     bull.value -= 4
                     bull.book[crashfield.number] = True
                     #Spark(bull.pos, crashfield.value)
