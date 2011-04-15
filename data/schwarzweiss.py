@@ -117,6 +117,40 @@ class Spark(pygame.sprite.Sprite):
         self.pos[1] += self.vec * self.dy * seconds
         self.rect.centerx = round(self.pos[0],0)
         self.rect.centery = round(self.pos[1],0)
+        
+class Explosion(pygame.sprite.Sprite):
+    """a flashing yellow circle, disappearing after some time."""
+    def __init__(self, pos, radius = 15, time = 0.5):
+        pygame.sprite.Sprite.__init__(self, self.groups)
+        self.pos = [0.0,0.0]
+        self.pos[0] = pos[0]
+        self.pos[1] = pos[1]
+        self.radius = radius
+        self.lifetime = time
+        self.exploradius = 0
+        self.image = pygame.Surface((self.radius * 2, self.radius * 2))
+        self.image.set_colorkey((0,0,0)) # black transparent
+        self.update(0) # have to pass sconds as argument for update()
+        self.rect = self.image.get_rect()
+        self.rect.centerx = self.pos[0]
+        self.rect.centery = self.pos[1]
+        
+    def update(self, seconds):
+        #self.image.fill((0,0,0))
+        self.lifetime -= seconds
+        if self.lifetime < 0:
+            self.kill()
+        self.exploradius += 1
+        #self.exploradius = min(self.radius, self.exploradius)
+        if self.exploradius > self.radius:
+            #self.kill()
+            self.exploradius = self.radius
+        self.red = random.randint(200,255)
+        self.green = random.randint(128,200)
+        self.blue = 0
+        pygame.draw.circle(self.image, (self.red, self.green, self.blue), (self.radius, self.radius), self.exploradius)
+        
+        
 
 class Rocket(pygame.sprite.Sprite):
     """a rocket that fires only when the energy bar is full"""
@@ -124,6 +158,7 @@ class Rocket(pygame.sprite.Sprite):
     mass = 100
     def __init__(self, boss):
         pygame.sprite.Sprite.__init__(self, self.groups)
+        self.radius = 5 # tiny radius at center of rocket !
         self.boss = boss
         self.pos = [0.0,0.0]
         self.pos[0] = self.boss.pos[0]
@@ -155,7 +190,7 @@ class Rocket(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.centerx = round(self.pos[0],0)
         self.rect.centery = round(self.pos[1],0)
-        #self.lifetime = 15.0
+        self.lifetime = 30.0
         self.hitpoints = Config.rockethitpoints
         self.phase = 0 # first pahse fly to nord middle border, second phase aim at enemy player
         self.middletarget = Config.height / 2.0 * random.random() # aim at a point (y) between the top border and the middle of the screen
@@ -164,11 +199,12 @@ class Rocket(pygame.sprite.Sprite):
         pass # the rocket is guided by itself and not by elastic_collision
         
     def update(self, seconds):
-        #self.lifetime -= seconds
-        #if self.lifetime < 0:
-        #    self.kill()
+        self.lifetime -= seconds
+        if self.lifetime < 0:
+            self.kill()
         #if self.pos[1] <= Tank.side:
         #    self.phase = 1 # aim at enemy player if reaching north border
+        self.vel += seconds # acceleration
         if self.boss.number == 0: # left player, rocket flys from west to east
            if self.pos[0] >= Config.width / 2:
                self.phase = 1
@@ -209,6 +245,7 @@ class Obstacle(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self, self.groups)
         self.vertical = vertical
         self.bounce = bounce
+        self.blinktime = 0
         if self.vertical:
             self.image = pygame.Surface((10,Tank.side))
         else:
@@ -238,6 +275,11 @@ class Obstacle(pygame.sprite.Sprite):
         
     def update(self, seconds):
         """slowly cycle the yellow-red color"""
+        if self.blinktime > 0:
+            self.blinktime -= seconds # reduce blinktime
+            self.blue = random.randint(128,255)
+        else:
+            self.blue = 0
         self.red += self.dr
         if self.red > 255 or self.red < 200:
             self.dr *= -1
@@ -1085,6 +1127,7 @@ def game(greentanks=3, fieldsx=16, fieldsy=8, x=1024,y=800):
     Text._layer = 4
     Bar._layer = 2
     Rocket._layer = 9
+    Explosion._layer = 6
  
     #assign default groups to each sprite class
     Tank.groups = tankgroup, allgroup
@@ -1097,6 +1140,7 @@ def game(greentanks=3, fieldsx=16, fieldsy=8, x=1024,y=800):
     Obstacle.groups = allgroup, obstaclegroup
     Bar.groups = allgroup
     Rocket.groups = allgroup, rocketgroup
+    Explosion.groups = allgroup
     
     # ---- create Tanks ------
     #         Tank(pos, turretAngle, tankAngle)
@@ -1229,6 +1273,7 @@ def game(greentanks=3, fieldsx=16, fieldsy=8, x=1024,y=800):
                 if tank.number != bouncebullet.boss.number:
                     tank.damage += 1 # damage model is not coded yet
                     tank.pause += Config.maxpause # tank will become immobile after a direct hit.
+                    Explosion(bouncebullet.pos)
                 if tank.number > 1: # neutral tank
                     if bouncebullet.boss.number < 2: # bullet come from player
                         Config.explo3.play()
@@ -1251,6 +1296,7 @@ def game(greentanks=3, fieldsx=16, fieldsy=8, x=1024,y=800):
             crashgroup = pygame.sprite.spritecollide(rocket, tankgroup, False, pygame.sprite.collide_circle)
             for crashtank in crashgroup:
                 if crashtank.number != rocket.boss.number and crashtank.number <2:
+                    Explosion(rocket.pos, 35)
                     if rocket.boss.number == 0: # player1 has scored a hit
                         Config.vampir1.play()
                         player1.energy += player2.energy
@@ -1266,6 +1312,7 @@ def game(greentanks=3, fieldsx=16, fieldsy=8, x=1024,y=800):
             for slurpbullet in crashgroup:
                 if slurpbullet.boss.number < 2: # only slurp for player bullets
                     Config.slurp.play()
+                obst.blinktime += 0.3 # add blinking effect to obstacle
                 slurpbullet.kill()
                     
         score.changemsg("%.1f %%  vs. %.1f %%" % (Field.whitesum *1.0 / Field.fields * 100 , Field.blacksum *1.0 / Field.fields *100 ))

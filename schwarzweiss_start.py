@@ -64,7 +64,8 @@ def makemenu(pos=0):
         ["# of fields (x-axis): %i " % Config.fieldsx , lambda: option3(Config.fieldsx)],
         ["# of fields (y-axis): %i " % Config.fieldsy , lambda: option4(Config.fieldsy)],
         ["screen resolution: %i x %i" % (Config.resolution[0], Config.resolution[1]), lambda: option5(Config.resolution)],
-        ["Quit Game", option6])
+        ["view instructions", option6],
+        ["Quit Game", option7])
     
     Config.menu.center_at(320, 240)
 
@@ -80,6 +81,7 @@ def makemenu(pos=0):
 
 #Functions called when an option is selected
 def option1():
+    """play a game"""
     print "starting game with ", Config.resolution
     Config.result =  schwarzweiss.game(Config.greentanks, Config.fieldsx, Config.fieldsy, Config.resolution[0], Config.resolution[1])
     #from data import schwarzweiss # import again to avoid strange bug
@@ -89,6 +91,7 @@ def option1():
     
     
 def option2(argument):
+    """change number of green tanks"""
     #print "Options > %s" % argument
     print "number of green tanks: ", argument
     if argument == 1:
@@ -102,6 +105,7 @@ def option2(argument):
     makemenu(1)
         
 def option3(argument):
+    """change number of fields x"""
     print "number of fields x-axis %i" % argument
     #global geraet
     if argument == 4:
@@ -117,6 +121,7 @@ def option3(argument):
     makemenu(2)
 
 def option4(argument):
+    """change number of fields y"""
     print "number of fields y-axis %i" % argument
     #global geraet
     if argument == 2:
@@ -133,6 +138,7 @@ def option4(argument):
 
     
 def option5(argument):
+    """change screen resolution"""
     print "resolution: %i,%i" % (argument[0], argument[1])
     if argument == (320,200):
         Config.resolution = (640,480)
@@ -145,8 +151,12 @@ def option5(argument):
     else:
         Config.resolution = (320,200)
     makemenu(4)
-    
+
 def option6():
+    """view instructions"""
+
+def option7():
+    """quit game"""
     Config.menuloop = False
     #pygame.quit()
     #print "nun kommt der sys.exit"
