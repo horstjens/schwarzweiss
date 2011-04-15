@@ -64,8 +64,9 @@ def makemenu(pos=0):
         ["# of fields (x-axis): %i " % Config.fieldsx , lambda: option3(Config.fieldsx)],
         ["# of fields (y-axis): %i " % Config.fieldsy , lambda: option4(Config.fieldsy)],
         ["screen resolution: %i x %i" % (Config.resolution[0], Config.resolution[1]), lambda: option5(Config.resolution)],
-        ["view instructions", option6],
-        ["Quit Game", option7])
+        ["view readme.txt ", option6],
+        ["view Schwarzweiss homepage", option7],
+        ["Quit Game", option8])
     
     Config.menu.center_at(320, 240)
 
@@ -154,8 +155,14 @@ def option5(argument):
 
 def option6():
     """view instructions"""
-
+    # try to open the readme file
+    webbrowser.open_new_tab("readme.txt")
+    
 def option7():
+    """visit schwarzweiss homepage"""
+    webbrowser.open_new_tab("http://thepythongamebook.com/en:resources:games:schwarzweiss")
+
+def option8():
     """quit game"""
     Config.menuloop = False
     #pygame.quit()
