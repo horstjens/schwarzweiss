@@ -30,7 +30,7 @@ import pygame
 import random
 import math
 import os
-import sys
+#import sys
 
 
 #GRAD = math.pi / 180 # 2 * pi / 360   # math module needs Radiant instead of Grad
@@ -66,8 +66,8 @@ class Config(object):
     ebasegain = 45 # energy gain per second
     ehitgain = 1
     eturrethitgain = 25 # once
-    egridgain = 5 # once
-    egridconvert = 300 # once
+    egridgain = 0 # once 5
+    egridconvert = 1 # once # 300
     emoveloss = 10 # per second !
     erotateloss = 200 # per second !
     ebulletloss = 300 # once per shot 
@@ -87,12 +87,12 @@ class Dummysound:
     def play(self): pass
 
 
-class Spark(pygame.sprite.Sprite):
+class Spark(pygame.sprite.DirtySprite):
     """a small spark to indicate that a field has changed color"""
     side = 4
     friction = .99
     def __init__(self, pos, color, heading, lifetime ):
-        pygame.sprite.Sprite.__init__(self, self.groups)
+        pygame.sprite.DirtySprite.__init__(self, self.groups)
         self.pos = [0.0,0.0]
         self.pos[0] = pos[0]
         self.pos[1] = pos[1]
@@ -105,6 +105,7 @@ class Spark(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.dy = math.sin(self.heading)
         self.dx = math.cos(self.heading)
+        self.dirty = 2 # always repaint
         
     
     def update(self, seconds):
@@ -119,10 +120,10 @@ class Spark(pygame.sprite.Sprite):
         self.rect.centerx = round(self.pos[0],0)
         self.rect.centery = round(self.pos[1],0)
         
-class Explosion(pygame.sprite.Sprite):
+class Explosion(pygame.sprite.DirtySprite):
     """a flashing yellow circle, disappearing after some time."""
     def __init__(self, pos, radius = 15, time = 0.5):
-        pygame.sprite.Sprite.__init__(self, self.groups)
+        pygame.sprite.DirtySprite.__init__(self, self.groups)
         self.pos = [0.0,0.0]
         self.pos[0] = pos[0]
         self.pos[1] = pos[1]
@@ -131,6 +132,7 @@ class Explosion(pygame.sprite.Sprite):
         self.exploradius = 0
         self.image = pygame.Surface((self.radius * 2, self.radius * 2))
         self.image.set_colorkey((0,0,0)) # black transparent
+        self.dirty = 2 # always repaint
         self.update(0) # have to pass sconds as argument for update()
         self.rect = self.image.get_rect()
         self.rect.centerx = self.pos[0]
@@ -153,12 +155,12 @@ class Explosion(pygame.sprite.Sprite):
         
         
 
-class Rocket(pygame.sprite.Sprite):
+class Rocket(pygame.sprite.DirtySprite):
     """a rocket that fires only when the energy bar is full"""
     side = 70
     mass = 100
     def __init__(self, boss):
-        pygame.sprite.Sprite.__init__(self, self.groups)
+        pygame.sprite.DirtySprite.__init__(self, self.groups)
         self.radius = 5 # tiny radius at center of rocket !
         self.boss = boss
         self.pos = [0.0,0.0]
@@ -195,6 +197,7 @@ class Rocket(pygame.sprite.Sprite):
         self.hitpoints = Config.rockethitpoints
         self.phase = 0 # first pahse fly to nord middle border, second phase aim at enemy player
         self.middletarget = Config.height / 2.0 * random.random() # aim at a point (y) between the top border and the middle of the screen
+        self.dirty = 2 # always repaint
         
     def rotate_toward_moving(self):
         pass # the rocket is guided by itself and not by elastic_collision
@@ -240,10 +243,10 @@ class Rocket(pygame.sprite.Sprite):
         self.rect.centery = round(self.pos[1],0)
         
         
-class Obstacle(pygame.sprite.Sprite):
+class Obstacle(pygame.sprite.DirtySprite):
     """ a rectangular, bulletproof obstacle"""
     def __init__(self, x,y, vertical = True, bounce = False):
-        pygame.sprite.Sprite.__init__(self, self.groups)
+        pygame.sprite.DirtySprite.__init__(self, self.groups)
         self.vertical = vertical
         self.bounce = bounce
         self.blinktime = 0
@@ -273,6 +276,7 @@ class Obstacle(pygame.sprite.Sprite):
         self.pos[1] = y
         self.rect.centerx = round(self.pos[0],0)
         self.rect.centery = round(self.pos[1],0)
+        self.dirty = 2 # always repaint
         
     def update(self, seconds):
         """slowly cycle the yellow-red color"""
@@ -308,7 +312,7 @@ class Obstacle(pygame.sprite.Sprite):
             self.rect.centery = round(self.pos[1],0)
                 
         
-class Bar(pygame.sprite.Sprite):
+class Bar(pygame.sprite.DirtySprite):
        """a bar to indicate energy loss or gain
           barnumber:
           1 = energy reserve
@@ -318,7 +322,7 @@ class Bar(pygame.sprite.Sprite):
        length = Config.width / 4
        height = 20
        def __init__(self, pos, boss, barnumber):
-           pygame.sprite.Sprite.__init__(self, self.groups)
+           pygame.sprite.DirtySprite.__init__(self, self.groups)
            self.boss = boss
            self.pos = [0.0,0.0]
            self.pos[0] = pos[0]
@@ -339,6 +343,7 @@ class Bar(pygame.sprite.Sprite):
                self.red = 255
                self.green= 0
                self.blue = 255
+           self.dirty = 2 # always repaint
        
        def update(self, seconds):
            if self.barnumber == 1: # energy reserve
@@ -375,9 +380,9 @@ class Bar(pygame.sprite.Sprite):
                pygame.draw.rect(self.image, (self.red,self.green,self.blue), (0,0,pausex,Bar.height))
                pygame.draw.rect(self.image, (255,255,255),(0,0,Bar.length, Bar.height),1) # border
                
-class Text(pygame.sprite.Sprite):
+class Text(pygame.sprite.DirtySprite):
     def __init__(self, pos, msg, fontsize=32, color=(0,0,0)):
-        pygame.sprite.Sprite.__init__(self, self.groups)
+        pygame.sprite.DirtySprite.__init__(self, self.groups)
         self.pos = [0.0,0.0]
         self.pos[0] = pos[0]
         self.pos[1] = pos[1]
@@ -385,6 +390,7 @@ class Text(pygame.sprite.Sprite):
         self.color = color
         self.msg = msg
         self.changemsg(msg)
+        self.dirty = 2 # always repaint
         
     def update(self, seconds):        
         pass
@@ -397,14 +403,14 @@ class Text(pygame.sprite.Sprite):
         self.rect.centery = self.pos[1]
 
 
-class Bullet(pygame.sprite.Sprite):
+class Bullet(pygame.sprite.DirtySprite):
     """ a big projectile fired by the tank's main cannon"""
     side = 7 # small side of bullet rectangle
     vel = 180 # velocity
     mass = 50
     maxlifetime = 10.0 # seconds
     def __init__(self, boss):
-        pygame.sprite.Sprite.__init__(self, self.groups) # THE most important line !
+        pygame.sprite.DirtySprite.__init__(self, self.groups) # THE most important line !
         self.boss = boss
         self.dx = 0
         self.dy = 0
@@ -422,9 +428,11 @@ class Bullet(pygame.sprite.Sprite):
         self.dy += self.boss.dy # add boss movement
         self.pos = self.boss.pos[:] # copy (!!!) of boss position 
         #self.pos = self.boss.pos   # uncomment this linefor fun effect
+        self.dirty = 2 # always repaint
         self.calculate_origin()
         self.update() # to avoid ghost sprite in upper left corner, 
                       # force position calculation.
+                    
                       
     def calculate_heading(self):
         """ drawing the bullet and rotating it according to it's launcher"""
@@ -507,6 +515,7 @@ class Tracer(Bullet):
         self.value = 16
         self.maxlifetime = Tracer.maxlifetime
         self.mass = Tracer.mass
+        self.dirty = 2 # always repaint
         
     def calculate_heading(self):
         """overwriting the method because there are some differences 
@@ -541,12 +550,12 @@ class Tracer(Bullet):
             self.pos[0] +=  math.cos(degrees_to_radians(30+self.boss.tankAngle)) * (Tank.side/2)
             self.pos[1] +=  math.sin(degrees_to_radians(-30-self.boss.tankAngle)) * (Tank.side/2)
 
-class Spore(pygame.sprite.Sprite):
+class Spore(pygame.sprite.DirtySprite):
     """a spore that spawns from a converted (crossed) field
        into a random direction and convert other non-crossed fields
        toward the spore's color"""
     def __init__(self, boss):
-        pygame.sprite.Sprite.__init__(self, self.groups)
+        pygame.sprite.DirtySprite.__init__(self, self.groups)
         self.boss = boss
         self.book = {} # important to check converted fields
         self.pos = [0.0,0.0]
@@ -564,9 +573,9 @@ class Spore(pygame.sprite.Sprite):
             self.radius = 5
         pygame.draw.circle(self.image, (0,0,255), (self.radius, self.radius), self.radius -4) #big blue outer circle
         pygame.draw.line(self.image, (0, 0, 255), (0,0),(self.radius * 2, self.radius * 2), 6) # thick X
-        pygame.draw.line(self.image, (self.color, self.color, self.color), (0,0),(self.radius * 2, self.radius * 2), 5) # thick X
+        pygame.draw.line(self.image, (self.color, self.color, self.color), (0,0),(self.radius * 2, self.radius * 2), 4) # thick X
         pygame.draw.line(self.image, (0, 0, 255), (0,self.radius * 2 ),(self.radius * 2,0), 6) # thick X
-        pygame.draw.line(self.image, (self.color, self.color, self.color), (0,self.radius * 2 ),(self.radius * 2,0), 6) # thick X
+        pygame.draw.line(self.image, (self.color, self.color, self.color), (0,self.radius * 2 ),(self.radius * 2,0), 4) # thick X
         self.rect = self.image.get_rect()
         self.rect.centerx = self.pos[0]
         self.rect.centery = self.pos[1]
@@ -575,8 +584,9 @@ class Spore(pygame.sprite.Sprite):
         self.dx = math.cos(degrees_to_radians(self.angle)) * self.vel
         self.dy = math.sin(degrees_to_radians(-self.angle)) * self.vel
         self.lifetime = 0
-        self.maxlifetime = 1
+        self.maxlifetime = 1+self.boss.sporecount/10 # older Fields generate longer-living spores
         self.value = 0
+        self.dirty = 2 # always repaint
         self.update(0) # need to pass seconds to update
         
     def update(self, seconds):
@@ -588,7 +598,7 @@ class Spore(pygame.sprite.Sprite):
         self.rect.centerx = round(self.pos[0],0)
         self.rect.centery = round(self.pos[1],0)
             
-class Tank(pygame.sprite.Sprite):
+class Tank(pygame.sprite.DirtySprite):
     """ A Tank, controlled by the Player with Keyboard commands.
     This Tank draw it's own Turret (including the main gun) 
     and it's bow rectangle (slit for Tracer Machine Gun"""
@@ -613,7 +623,7 @@ class Tank(pygame.sprite.Sprite):
         self.number = Tank.number # now i have a unique tank number
         Tank.number += 1 # prepare number for next tank
         Tank.book[self.number] = self # store myself into the tank book
-        pygame.sprite.Sprite.__init__(self, self.groups) # THE most important line !
+        pygame.sprite.DirtySprite.__init__(self, self.groups) # THE most important line !
         self.pos = [startpos[0], startpos[1]] # x,y
         self.dx = 0
         self.dy = 0
@@ -630,6 +640,8 @@ class Tank(pygame.sprite.Sprite):
         self.pause = 0.0 # after a turret hit, the tank is immobile for some time        
         self.turretAngle = turretangle #turret facing
         self.tankAngle = tankangle # tank facing
+        self.dirty = 2 # always repaint
+        self._layer = Tank._layer
 
         if self.number < 2:
             self.color = Tank.color[self.number]
@@ -881,11 +893,11 @@ class Tank(pygame.sprite.Sprite):
                     self.turndirection = -1
         return diff
 
-class Turret(pygame.sprite.Sprite):
+class Turret(pygame.sprite.DirtySprite):
     """turret on top of tank"""
     radius = 22 # red circle
     def __init__(self, boss):
-        pygame.sprite.Sprite.__init__(self, self.groups) # THE most important line !
+        pygame.sprite.DirtySprite.__init__(self, self.groups) # THE most important line !
         self.boss = boss
         self.side = self.boss.side
         self.images = {} # how much recoil after shooting, reverse order of apperance
@@ -900,6 +912,9 @@ class Turret(pygame.sprite.Sprite):
         self.images[8] = self.draw_cannon(8)  # position of max recoil
         self.images[9] = self.draw_cannon(4)
         self.images[10] = self.draw_cannon(0) # idle position
+        self.rect = self.boss.rect
+        self.dirty = 2 # always repaint
+
          
     def update(self, seconds):        
         # painting the correct image of cannon
@@ -928,8 +943,10 @@ class Turret(pygame.sprite.Sprite):
          pygame.draw.rect(image, (255,0,0), (self.side-20 - offset,self.side - 5, self.side - offset,10),1) # red rect 
          image.set_colorkey((128,128,128))
          return image            
-            
-class Field(pygame.sprite.Sprite):
+
+class Field(pygame.sprite.DirtySprite):            
+    #class Field(pygame.sprite.DirtySprite):
+    """ a dirtySprite is only painted when the flag .dirty is set to 1"""
     sidex = 164
     sidey = 48
     cornerx = 0
@@ -948,7 +965,7 @@ class Field(pygame.sprite.Sprite):
         self.value = value
         self.oldvalue = value
         #self.color = (value,value,value)
-        pygame.sprite.Sprite.__init__(self, self.groups) #THE most important line !
+        pygame.sprite.DirtySprite.__init__(self, self.groups) #THE most important line !
         self.image = pygame.Surface((Field.sidex, Field.sidey))
         self.image.fill((value,value,value))
         pygame.draw.rect(self.image,  (128,128,255), (0,0,Field.sidex, Field.sidey),1) # grid-rect around field
@@ -957,20 +974,22 @@ class Field(pygame.sprite.Sprite):
         self.rect.centery = Field.cornery + Field.sidey / 2 + self.posy * Field.sidey
         self.black = False
         self.white = False
-        self.lifetime = 0
+        self.lifetime = 0 # beginning with the point of convert
         self.sporecount = 0
-        
+        self.dirty = 1 # at the beginning, paint all sprites, after that only if dirty is set again to 1
+                       # after each painting, dirty will be reset to 0
         
     
     def update(self, seconds):
-        self.lifetime += seconds
         if self.black or self.white:
+            self.lifetime += seconds
             if self.lifetime > 5 + self.sporecount* 5:
                 Spore(self) # spawn a Spore
                 self.sporecount += 1
         
         
         if self.value != self.oldvalue:
+            self.dirty = 1 # True
             self.image.fill((self.value, self.value, self.value))
             #print "changing  field" , str(self.number)
             pygame.draw.rect(self.image,  (128,128,255), (0,0,Field.sidex, Field.sidey),1) # grid-rect around field
@@ -1165,62 +1184,55 @@ def game(greentanks=3, fieldsx=16, fieldsy=8, x=1024,y=800):
     FPS = Config.fps         # desired max. framerate in frames per second. 
     playtime = 0
     
+
+    
+    
     tankgroup = pygame.sprite.Group()
     bulletgroup = pygame.sprite.Group()
     convertgroup = pygame.sprite.Group() # Tracer and bullets
-    fieldgroup = pygame.sprite.Group()
+    #fieldgroup = pygame.sprite.Group()
+    fieldgroup = pygame.sprite.Group() 
     obstaclegroup = pygame.sprite.Group()
     rocketgroup = pygame.sprite.Group()
     tracergroup = pygame.sprite.Group()
-    allgroup = pygame.sprite.LayeredUpdates()
+    #allgroup = pygame.sprite.LayeredUpdates()
+    flygroup = pygame.sprite.Group() # all flying objects that force fields to repaint
+    allgroup = pygame.sprite.LayeredDirty() # for painting only the dirty sprites
+        
     
-    
-    Tank._layer = 5
-    Bullet._layer = 8
-    Turret._layer = 7
-    Field._layer = 2
-    Obstacle._layer = 6
-    Spark._layer = 3
-    Text._layer = 4
-    Bar._layer = 2
-    Rocket._layer = 9
-    Explosion._layer = 6
-    Spore._layer = 3
- 
+    Tank._layer = 0
+    #Tank.layer = 9
+    #Bullet._layer = 8
+    #Turret._layer = 4
+    #Field._layer = 1
+    #Obstacle._layer = 9
+    #Spark._layer = 3
+    #Text._layer = 4
+    #Bar._layer = 2
+    #Rocket._layer = 9
+    #Explosion._layer = 6
+    #Spore._layer = 3
+  
+  
     #assign default groups to each sprite class
-    Tank.groups = tankgroup, allgroup
-    Field.groups = allgroup, fieldgroup
-    Turret.groups = allgroup
-    Spark.groups = allgroup
-    Tracer.groups = allgroup, tracergroup, convertgroup
-    Bullet.groups = bulletgroup, allgroup, convertgroup
+    Tank.groups =  allgroup, flygroup, tankgroup
+    Field.groups =   allgroup, fieldgroup 
+    Turret.groups = allgroup, flygroup
+    Spark.groups = allgroup, flygroup
+    Tracer.groups = allgroup, tracergroup, convertgroup, flygroup
+    Bullet.groups = bulletgroup, allgroup, convertgroup, flygroup
     Text.groups = allgroup
     Obstacle.groups = allgroup, obstaclegroup
     Bar.groups = allgroup
-    Rocket.groups = allgroup, rocketgroup
-    Explosion.groups = allgroup
-    Spore.groups = allgroup, convertgroup
+    Rocket.groups = allgroup, rocketgroup, flygroup
+    Explosion.groups = allgroup, flygroup
+    Spore.groups = allgroup, convertgroup, flygroup
+
     
-    # ---- create Tanks ------
-    #         Tank(pos, turretAngle, tankAngle)
-    # !! if you out-comment the next 2 lines, try starting the game twice via the menu...second thime you will see some strange effect
-    Tank.book = {}
-    Tank.number = 0
-    player1 = Tank((Tank.side/2, Config.height/2 ), 0, 90)#
-    player2 = Tank((Config.width - Tank.side/2,Config.height/2),180,90)
+
+ 
     
-    # ---- place obstacles ---
-    Obstacle(Tank.side/2, Tank.side, False) # upper left horizontal
-    Obstacle(Config.width - Tank.side/2, Tank.side, False) # upper right, horizontal
-    #Obstacle(Config.width / 2, Tank.side/2, True) # upper border, vertical
-    Obstacle(Config.width / 2, Config.height - Tank.side/2, True) #lower border, vertical
-    #Obstacle(Config.width/ 2 , Config.height - Tank.side, False) # lower border, center, horizontal
-    Obstacle(Config.width/ 2 - Tank.side/2, Config.height - Tank.side, False) # lower border, left of center, horizontal
-    Obstacle(Config.width/ 2 + Tank.side/2, Config.height - Tank.side, False) # lower border, left of center, horizontal
-    # sliding obstacles
-    Obstacle(Config.width / 2 , Config.height - Tank.side , False, True) # horizontal sliding
-    #Obstacle(Config.width / 2 + 100, Config.height - Tank.side , False, True)
-    Obstacle(Config.width / 2, Config.height / 2, True, True) # vertical sliding
+
     #---------- fill grid with Field sprites ------------
     # how much space x in playfield ?
     lengthx = Config.width - 2* Tank.side
@@ -1235,7 +1247,33 @@ def game(greentanks=3, fieldsx=16, fieldsy=8, x=1024,y=800):
     Field.fields = Config.xtiles * Config.ytiles # amount of fields !!!!
     for y in range(Config.ytiles):
        for x in range(Config.xtiles):
-           Field(x,y,128)
+           currentfield = Field(x,y,128)
+           #currentfield.dirty = 1 # make dirty at start to force drawing
+           
+    
+    # ---- create Tanks ------
+    #         Tank(pos, turretAngle, tankAngle)
+    # !! if you out-comment the next 2 lines, try starting the game twice via the menu...second thime you will see some strange effect
+    Tank.book = {}
+    Tank.number = 0
+    player1 = Tank((Tank.side/2, Config.height/2 ), 0, 90)#
+    player2 = Tank((Config.width - Tank.side/2,Config.height/2),180,90)
+    
+    print "player 1 _layer:" , player1._layer
+    
+    # ---- place obstacles ---
+    Obstacle(Tank.side/2, Tank.side, False) # upper left horizontal
+    Obstacle(Config.width - Tank.side/2, Tank.side, False) # upper right, horizontal
+    #Obstacle(Config.width / 2, Tank.side/2, True) # upper border, vertical
+    Obstacle(Config.width / 2, Config.height - Tank.side/2, True) #lower border, vertical
+    #Obstacle(Config.width/ 2 , Config.height - Tank.side, False) # lower border, center, horizontal
+    Obstacle(Config.width/ 2 - Tank.side/2, Config.height - Tank.side, False) # lower border, left of center, horizontal
+    Obstacle(Config.width/ 2 + Tank.side/2, Config.height - Tank.side, False) # lower border, left of center, horizontal
+    # sliding obstacles
+    Obstacle(Config.width / 2 , Config.height - Tank.side , False, True) # horizontal sliding
+    #Obstacle(Config.width / 2 + 100, Config.height - Tank.side , False, True)
+    Obstacle(Config.width / 2, Config.height / 2, True, True) # vertical sliding
+    
     # statusText
     status1 = Text((Config.width/2, 18), "SchwarzWeiss", 36 )
     score = Text((Config.width/2, 40),"%i (white player) vs. %i (black player) " % (0,0), 30)
@@ -1267,6 +1305,7 @@ def game(greentanks=3, fieldsx=16, fieldsy=8, x=1024,y=800):
 
     print "starting mainloop", mainloop       
     while mainloop:
+        #print Tank._layer
         milliseconds = clock.tick(Config.fps)  # milliseconds passed since last frame
         seconds = milliseconds / 1000.0 # seconds passed since last frame (float)
         playtime += seconds
@@ -1278,7 +1317,10 @@ def game(greentanks=3, fieldsx=16, fieldsy=8, x=1024,y=800):
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     mainloop = False 
-                #if event.key == pygame.K_r:
+                if event.key == pygame.K_1:
+                     print allgroup.get_top_layer()
+                if event.key == pygame.K_2:
+                     print allgroup.get_bottom_layer()
                 #    Rocket(player1)
                 #if event.key == pygame.K_t:
                 #    Rocket(player2)
@@ -1385,15 +1427,30 @@ def game(greentanks=3, fieldsx=16, fieldsy=8, x=1024,y=800):
         # ------------ textdisplays ---------------
         
         # ------------ win ------- 
-        if Field.blacksum > Field.fields / 2:
-            msg = "black player wins (%.1f %% vs %.1f %%)" % (Field.blacksum *1.0 / Field.fields * 100 , Field.whitesum *1.0 / Field.fields *100 )
-            mainloop = False
-        elif Field.whitesum > Field.fields / 2:
-            msg=  "white player wins (%.1f %% vs %.1f %%)" % (Field.whitesum *1.0 / Field.fields * 100 , Field.blacksum *1.0 / Field.fields *100 )
-            mainloop = False
+        if Field.blacksum + Field.whitesum == Field.fields:
+            if Field.blacksum > Field.fields / 2:
+                msg = "black player wins (%.1f %% vs %.1f %%)" % (Field.blacksum *1.0 / Field.fields * 100 , Field.whitesum *1.0 / Field.fields *100 )
+                mainloop = False
+            elif Field.whitesum > Field.fields / 2:
+                msg=  "white player wins (%.1f %% vs %.1f %%)" % (Field.whitesum *1.0 / Field.fields * 100 , Field.blacksum *1.0 / Field.fields *100 )
+                mainloop = False
+                
+
+        
+
+        
+        for currentfield in fieldgroup:
+            crashgroup = pygame.sprite.spritecollide(currentfield, flygroup, False) 
+            for crashobject in crashgroup:
+                currentfield.dirty = 1 # make field dirty and force redrawing
+        
+        #fieldgroup.update(seconds)
+        #fieldgroup.draw(screen)        
+        
         allgroup.clear(screen, background) # funny effect if you outcomment this line
         allgroup.update(seconds)
         allgroup.draw(screen)
+        
         pygame.display.flip() # flip the screen 30 times a second
     #pygame.quit()
     # kill all sprites:
